@@ -6,6 +6,7 @@ import FeaturesSection from "@/components/features-section"
 import AdvancedFeaturesSection from "@/components/advanced-features-section"
 import VpnStatsSection from "@/components/vpn-stats-section"
 import Footer from "@/components/footer"
+import IpStatusBanner from "@/components/ip-status-banner"
 
 // Import SecurityBeyondSection with no SSR to avoid hydration errors
 const SecurityBeyondSection = dynamic(() => import("@/components/security-beyond-section"), {
@@ -15,6 +16,9 @@ const SecurityBeyondSection = dynamic(() => import("@/components/security-beyond
 export default function Home() {
   return (
     <main className="min-h-screen bg-white">
+      {/* IP Status Banner */}
+      <IpStatusBanner />
+
       {/* Hero section with gradient background */}
       <div className="bg-gradient-to-br from-purple-950 to-purple-900 bg-grid-pattern">
         <Navbar />

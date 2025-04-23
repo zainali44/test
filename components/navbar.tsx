@@ -74,7 +74,7 @@ export default function Navbar() {
       <div
         className={cn(
           "fixed top-0 left-0 right-0 z-50 px-4 md:px-8 transition-all duration-500 flex justify-center",
-          scrolled ? "py-3" : "py-5",
+          scrolled ? "py-3" : "py-8",
         )}
       >
         <motion.header

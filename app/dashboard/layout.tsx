@@ -1,6 +1,5 @@
 import type React from "react"
 import { Sidebar } from "@/components/sidebar"
-import { Navbar } from "@/components/navbar"
 
 export default function DashboardLayout({
   children,
@@ -16,7 +15,7 @@ export default function DashboardLayout({
         </div>
 
         <div className="flex-1 flex flex-col">
-          <Navbar />
+          {/* <Navbar /> */}
           <div className="p-4 sm:p-6 overflow-y-auto h-[calc(100vh-4rem)]">{children}</div>
         </div>
       </div>

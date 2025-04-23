@@ -7,8 +7,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Efandex Dashboard",
-  description: "Property management dashboard",
+  title: "Crest VPN",
+  description: "Crest VPN - Secure Your Online Privacy",
 }
 
 export default function RootLayout({

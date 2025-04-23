@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const generateClientToken = (clientId: string) => {
-    // In a real application, you would use a proper JWT library and a secure secret
+    // In a real application, you would use a proper JWT library and a crest secret
     const token = btoa(JSON.stringify({ clientId, exp: Date.now() + 3600000 })) // 1 hour expiration
     return token
   }

@@ -8,7 +8,7 @@ import ClientLogos from "./client-logos"
 
 export default function HeroSection() {
   return (
-    <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 px-4 overflow-hidden">
+    <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 px-4 overflow-hidden h-screen">
       {/* Animated background elements */}
       <div className="absolute top-20 left-1/4 w-64 h-64 bg-purple-600/10 rounded-full blur-[100px] animate-pulse"></div>
       <div className="absolute bottom-20 right-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-[100px] animate-pulse delay-1000"></div>

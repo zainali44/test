@@ -249,13 +249,13 @@ export default function AdvancedFeaturesSection() {
             >
               <div className="flex items-start gap-4">
                 <div className="rounded-full">
-                  <Image
+                  {/* <Image
                     src="https://images.crestvpn-tools.com/wp-content/uploads/en/2024/10/shopping-dollar.webp"
                     width={24}
                     height={24}
                     alt="crest connection"
                     className="w-12 h-12 object-contain"
-                  />
+                  /> */}
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">Steady & crest connection with Personal IP</h3>

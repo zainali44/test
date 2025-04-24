@@ -1,24 +1,22 @@
-import type React from "react"
+import type { ReactNode } from "react"
 import { Sidebar } from "@/components/sidebar"
+import Header from "@/components/header"
+import { ThemeProvider } from "@/Imageselector/components/theme-provider"
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+interface DashboardLayoutProps {
+  children: ReactNode
+}
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <div className="h-screen overflow-hidden">
-      <div className="flex h-full">
-        {/* Desktop Sidebar - Always visible on md and larger screens */}
-        <div className="hidden md:block w-64 h-full">
-          <Sidebar />
-        </div>
-
-        <div className="flex-1 flex flex-col">
-          {/* <Navbar /> */}
-          <div className="p-4 sm:p-6 overflow-y-auto h-[calc(100vh-4rem)]">{children}</div>
+    <ThemeProvider attribute="class" defaultTheme="light">
+      <div className="flex h-screen bg-[#f8fafc]">
+        <Sidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <main className="flex-1 overflow-y-auto p-8">{children}</main>
         </div>
       </div>
-    </div>
+    </ThemeProvider>
   )
 }

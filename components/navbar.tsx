@@ -175,18 +175,17 @@ export default function Navbar() {
               className="hidden lg:flex items-center gap-4"
             >
               <motion.div variants={itemAnimation}>
-                <Button
-                  size="sm"
+                <Link
+                  href="/login"
                   className={cn(
                     "transition-all duration-300 text-xs",
                     scrolled
                       ? "text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400 bg-transparent"
-                      : "text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40 bg-transparent",
+                      : "text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40 bg-transparent hover:shadow-lg hover:shadow-white/20 rounded-full px-5 py-2 flex items-center gap-2",
                   )}
-               
                 >
                   Login
-                </Button>
+                </Link>
               </motion.div>
 
               <motion.div variants={itemAnimation}>
@@ -328,9 +327,8 @@ export default function Navbar() {
                   }}
                   exit={{ y: 20, opacity: 0 }}
                 >
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <Link
+                    href="/login"
                     className={cn(
                       "transition-all duration-300 text-xs",
                       scrolled
@@ -339,7 +337,7 @@ export default function Navbar() {
                     )}
                   >
                     Login
-                  </Button>
+                  </Link>
                 </motion.div>
 
                 <motion.div

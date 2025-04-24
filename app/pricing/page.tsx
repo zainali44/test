@@ -1,16 +1,19 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Check, Zap, Shield, Users, Lock } from "lucide-react"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
+// import IpStatusBanner from "@/components/ip-status-banner"
 
 type BillingCycle = "monthly" | "annual"
 type PlanDuration = "5-year" | "2-year" | "1-year" | "monthly"
 
 export default function PricingPage() {
+  const router = useRouter()
   const [selectedPlan, setSelectedPlan] = useState<PlanDuration>("5-year")
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("annual")
 
@@ -36,6 +39,13 @@ export default function PricingPage() {
     return (discountedPrice / months).toFixed(2)
   }
 
+  // Calculate total price
+  const calculateTotalPrice = (originalPrice: number, planType: PlanDuration) => {
+    const discountedPrice = originalPrice * (1 - discounts[planType])
+    const months = planType === "5-year" ? 60 : planType === "2-year" ? 24 : planType === "1-year" ? 12 : 1
+    return Number.parseFloat((discountedPrice * (months / 12)).toFixed(2))
+  }
+
   const handlePlanSelect = (plan: PlanDuration) => {
     setSelectedPlan(plan)
   }
@@ -44,8 +54,21 @@ export default function PricingPage() {
     setBillingCycle(cycle)
   }
 
+  const handleCheckout = (planName: string, originalPrice: number) => {
+    const totalPrice = calculateTotalPrice(originalPrice, selectedPlan)
+    const discountPercent = Math.round(discounts[selectedPlan] * 100)
+    const monthlyRate = `$${calculateMonthlyPrice(originalPrice, selectedPlan)}/mo`
+    const originalPriceTotal = Number.parseFloat((originalPrice * (selectedPlan === "monthly" ? 1 : 24)).toFixed(2))
+
+    // Navigate to checkout page with plan details
+    router.push(
+      `/checkout?plan=${planName}&duration=${selectedPlan}&price=${totalPrice}&originalPrice=${originalPriceTotal}&discount=${discountPercent}&monthlyRate=${monthlyRate}`,
+    )
+  }
+
   return (
     <div className="min-h-screen bg-white">
+      {/* <IpStatusBanner /> */}
       <Navbar />
 
       <main className="pt-32 pb-20">
@@ -169,7 +192,7 @@ export default function PricingPage() {
                     </div>
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-900">Full featured faster VPN</p>
-                      <p className="text-xs text-gray-500">crest connection with high-speed servers</p>
+                      <p className="text-xs text-gray-500">Secure connection with high-speed servers</p>
                     </div>
                   </div>
                   <div className="flex items-start">
@@ -192,7 +215,10 @@ export default function PricingPage() {
                   </div>
                 </div>
 
-                <Button className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 py-6 rounded-xl text-sm">
+                <Button
+                  className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 py-6 rounded-xl text-sm"
+                  onClick={() => handleCheckout("Standard", originalPrices.standard)}
+                >
                   Get started
                 </Button>
               </div>
@@ -233,7 +259,7 @@ export default function PricingPage() {
                     </div>
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-900">Full featured faster VPN</p>
-                      <p className="text-xs text-gray-500">crest connection with high-speed servers</p>
+                      <p className="text-xs text-gray-500">Secure connection with high-speed servers</p>
                     </div>
                   </div>
                   <div className="flex items-start">
@@ -250,8 +276,8 @@ export default function PricingPage() {
                       <Check className="h-5 w-5 text-green-500" />
                     </div>
                     <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">crest Password Manager</p>
-                      <p className="text-xs text-gray-500">Store and manage your passwords crestly</p>
+                      <p className="text-sm font-medium text-gray-900">Secure Password Manager</p>
+                      <p className="text-xs text-gray-500">Store and manage your passwords securely</p>
                     </div>
                   </div>
                   <div className="flex items-start">
@@ -265,7 +291,10 @@ export default function PricingPage() {
                   </div>
                 </div>
 
-                <Button className="w-full bg-purple-900 hover:bg-purple-800 text-white py-6 rounded-xl text-sm">
+                <Button
+                  className="w-full bg-purple-900 hover:bg-purple-800 text-white py-6 rounded-xl text-sm"
+                  onClick={() => handleCheckout("Plus", originalPrices.plus)}
+                >
                   Get started
                 </Button>
               </div>
@@ -303,7 +332,7 @@ export default function PricingPage() {
                     </div>
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-900">Full featured faster VPN</p>
-                      <p className="text-xs text-gray-500">crest connection with high-speed servers</p>
+                      <p className="text-xs text-gray-500">Secure connection with high-speed servers</p>
                     </div>
                   </div>
                   <div className="flex items-start">
@@ -320,8 +349,8 @@ export default function PricingPage() {
                       <Check className="h-5 w-5 text-green-500" />
                     </div>
                     <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">crest Password Manager</p>
-                      <p className="text-xs text-gray-500">Store and manage your passwords crestly</p>
+                      <p className="text-sm font-medium text-gray-900">Secure Password Manager</p>
+                      <p className="text-xs text-gray-500">Store and manage your passwords securely</p>
                     </div>
                   </div>
                   <div className="flex items-start">
@@ -344,7 +373,10 @@ export default function PricingPage() {
                   </div>
                 </div>
 
-                <Button className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 py-6 rounded-xl text-sm">
+                <Button
+                  className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 py-6 rounded-xl text-sm"
+                  onClick={() => handleCheckout("Max", originalPrices.max)}
+                >
                   Get started
                 </Button>
               </div>
@@ -402,7 +434,10 @@ export default function PricingPage() {
                   </div>
                 </div>
 
-                <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-6 rounded-xl text-sm mt-4">
+                <Button
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-6 rounded-xl text-sm mt-4"
+                  onClick={() => handleCheckout("Teams", 5.45)}
+                >
                   Get Teams Plan
                 </Button>
               </div>

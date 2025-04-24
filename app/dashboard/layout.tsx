@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { Sidebar } from "@/components/sidebar"
 import Header from "@/components/header"
-import { ThemeProvider } from "@/Imageselector/components/theme-provider"
+import { ThemeProvider } from "@/components/theme-provider"
 
 interface DashboardLayoutProps {
   children: ReactNode

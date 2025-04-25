@@ -8,28 +8,29 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Eye, EyeOff, Mail, Lock } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/app/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const { login, loading, user } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    
+    // If user is already logged in, redirect to dashboard
+    if (user) {
+      router.push("/dashboard")
+    }
+  }, [user, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      // In a real app, you would handle authentication here
-      window.location.href = "/dashboard"
-    }, 1500)
+    await login(email, password)
   }
 
   // Animation variants
@@ -236,9 +237,9 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full bg-green-500 hover:bg-green-600 text-white py-6 h-14 rounded-xl text-base font-medium shadow-lg transition-all duration-300"
-              disabled={isLoading}
+              disabled={loading}
             >
-              {isLoading ? (
+              {loading ? (
                 <div className="flex items-center justify-center">
                   <svg
                     className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"

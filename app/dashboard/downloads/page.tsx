@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator"
 import { Download, Info, Shield, Check, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { Card } from "@/components/ui/card"
 
 export default function DownloadsPage() {
   const handleDownload = (platform: string) => {
@@ -25,7 +26,7 @@ export default function DownloadsPage() {
       </div>
 
       {/* Featured Download - Windows */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <Card className="bg-white shadow-none border-none overflow-hidden">
         <div className="grid grid-cols-1 md:grid-cols-2">
           <div className="p-8 flex flex-col justify-center">
             <Badge className="w-fit mb-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100">RECOMMENDED</Badge>
@@ -58,12 +59,12 @@ export default function DownloadsPage() {
             <div className="flex flex-wrap gap-3">
               <Button
                 onClick={() => handleDownload("windows")}
-                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-full text-white"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Download Now
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" className="rounded-full">
                 <Info className="mr-2 h-4 w-4" />
                 Release Notes
               </Button>
@@ -84,7 +85,7 @@ export default function DownloadsPage() {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* All Platforms */}
       <h2 className="text-xl font-semibold mt-12 mb-6 flex items-center">
@@ -93,40 +94,10 @@ export default function DownloadsPage() {
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* macOS */}
-        <DownloadCard
-          title="macOS"
-          image="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/attachments/gen-images/public/macbook-vpn-protected-gYY5uTesOwlr5pbDa1yO36JV40gtd7.png"
-          requirements="macOS 10.15 or later"
-          version="v8.0.3"
-          onDownload={() => handleDownload("macos")}
-          setupGuides={[
-            { title: "Installation Guide", url: "#" },
-            { title: "Troubleshooting", url: "#" },
-          ]}
-        />
-
-        {/* Linux */}
-        <DownloadCard
-          title="Linux"
-          image="/linux-vpn-desktop.png"
-          requirements="Ubuntu, Debian, Fedora"
-          version="v3.2.1"
-          onDownload={() => handleDownload("linux")}
-          setupGuides={[
-            { title: "CLI Setup Guide", url: "#" },
-            { title: "GUI Setup Guide", url: "#" },
-          ]}
-          variants={[
-            { name: "GUI Version", onClick: () => handleDownload("linux-gui") },
-            { name: "CLI Version", onClick: () => handleDownload("linux-cli") },
-          ]}
-        />
-
         {/* Android */}
         <DownloadCard
           title="Android"
-          image="/android-vpn-secure.png"
+          image="https://firebasestorage.googleapis.com/v0/b/me365-81633.appspot.com/o/crest%2Fandroid-logo-png-transparent.png?alt=media&token=7c74a7c3-38dd-4d60-b4ed-1a8bb42349e5"
           requirements="Android 6.0 or later"
           version="v8.5.0"
           onDownload={() => handleDownload("android")}
@@ -143,7 +114,7 @@ export default function DownloadsPage() {
         {/* iOS */}
         <DownloadCard
           title="iOS"
-          image="/iphone-vpn-secure.png"
+          image="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/attachments/gen-images/public/bitten-fruit-silhouette-xieEqoPfftO0fERZrIzPebG8Np2Mp2.png"
           requirements="iOS 13.0 or later"
           version="v4.2.1"
           onDownload={() => handleDownload("ios")}
@@ -158,43 +129,18 @@ export default function DownloadsPage() {
         />
 
         {/* Android TV */}
-        <DownloadCard
-          title="Android TV"
-          image="/placeholder.svg?height=200&width=200&query=smart TV with VPN app"
-          requirements="Android TV 6.0 or later"
-          version="v3.1.0"
-          onDownload={() => handleDownload("android-tv")}
-          setupGuides={[{ title: "Setup Guide", url: "#" }]}
-          storeLink={{
-            text: "Get on Google Play",
-            url: "https://play.google.com",
-          }}
-        />
-
-        {/* Router */}
-        <DownloadCard
-          title="Router"
-          image="/placeholder.svg?height=200&width=200&query=wifi router with VPN"
-          requirements="DD-WRT, Tomato, AsusWRT"
-          version="Config Files"
-          onDownload={() => handleDownload("router")}
-          setupGuides={[
-            { title: "DD-WRT Setup", url: "#" },
-            { title: "Tomato Setup", url: "#" },
-            { title: "AsusWRT Setup", url: "#" },
-          ]}
-        />
+    
       </div>
 
       {/* Configuration Files Section */}
-      <div className="mt-12 bg-white rounded-lg border shadow-sm p-6">
+      <div className="mt-12 bg-white rounded-lg border border-gray-300 p-6 shadow-sm">
         <div className="flex flex-col md:flex-row gap-6 items-center">
           <div className="md:w-1/4">
             <div className="relative w-full max-w-[200px] mx-auto">
               <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-lg blur-lg"></div>
               <div className="relative bg-white rounded-lg p-4 shadow-sm">
                 <Image
-                  src="/placeholder.svg?height=200&width=200&query=VPN configuration files"
+                  src="https://img.freepik.com/premium-vector/outline-document-file-icon_791764-476.jpg"
                   alt="Configuration Files"
                   width={200}
                   height={200}
@@ -281,7 +227,7 @@ function DownloadCard({
   storeLink,
 }: DownloadCardProps) {
   return (
-    <div className="bg-white border rounded-lg overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white border border-gray-300 rounded-lg overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow">
       <div className="p-5 flex-1 flex flex-col">
         <div className="aspect-video relative mb-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-md overflow-hidden">
           <Image src={image || "/placeholder.svg"} alt={`${title} app`} fill className="object-contain p-4" />
@@ -306,8 +252,8 @@ function DownloadCard({
                   onClick={variant.onClick}
                   className={
                     i === 0
-                      ? "w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
-                      : "w-full border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                      ? "w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+                      : "w-full border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 "
                   }
                   variant={i === 0 ? "default" : "outline"}
                 >
@@ -319,7 +265,7 @@ function DownloadCard({
           ) : (
             <Button
               onClick={onDownload}
-              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
             >
               <Download className="mr-2 h-4 w-4" />
               Download

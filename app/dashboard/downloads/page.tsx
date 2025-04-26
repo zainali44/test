@@ -97,7 +97,7 @@ export default function DownloadsPage() {
         {/* Android */}
         <DownloadCard
           title="Android"
-          image="https://firebasestorage.googleapis.com/v0/b/me365-81633.appspot.com/o/crest%2Fandroid-logo-png-transparent.png?alt=media&token=7c74a7c3-38dd-4d60-b4ed-1a8bb42349e5"
+          image="https://storage.googleapis.com/gweb-uniblog-publish-prod/images/Android_robot.max-500x500.png"
           requirements="Android 6.0 or later"
           version="v8.5.0"
           onDownload={() => handleDownload("android")}
@@ -113,18 +113,18 @@ export default function DownloadsPage() {
 
         {/* iOS */}
         <DownloadCard
-          title="iOS"
-          image="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/attachments/gen-images/public/bitten-fruit-silhouette-xieEqoPfftO0fERZrIzPebG8Np2Mp2.png"
+          title="iOS (Coming Soon)"
+          image="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1667px-Apple_logo_black.svg.png"
           requirements="iOS 13.0 or later"
-          version="v4.2.1"
+          version="v4.2.1 Beta"
           onDownload={() => handleDownload("ios")}
           setupGuides={[
-            { title: "Installation Guide", url: "#" },
-            { title: "Troubleshooting", url: "#" },
+            { title: "Join Beta Program", url: "#" },
+            { title: "Early Access", url: "#" },
           ]}
           storeLink={{
-            text: "Download on App Store",
-            url: "https://apps.apple.com",
+            text: "Coming Soon to App Store",
+            url: "#",
           }}
         />
 
@@ -152,10 +152,9 @@ export default function DownloadsPage() {
           <div className="md:w-3/4">
             <h3 className="text-lg font-semibold mb-2">Manual Configuration Files</h3>
             <p className="text-muted-foreground mb-4">
-              Advanced users can download our configuration files for manual setup on any OpenVPN or WireGuard
-              compatible device.
+              Advanced users can download our configuration files for manual setup on any OpenVPN compatible device.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
               <Button
                 onClick={() => handleDownload("openvpn-config")}
                 variant="outline"
@@ -163,14 +162,6 @@ export default function DownloadsPage() {
               >
                 <Download className="mr-2 h-4 w-4" />
                 OpenVPN Config Files
-              </Button>
-              <Button
-                onClick={() => handleDownload("wireguard-config")}
-                variant="outline"
-                className="border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                WireGuard Config Files
               </Button>
             </div>
           </div>
@@ -192,11 +183,11 @@ export default function DownloadsPage() {
           </div>
           <div className="md:w-1/3 flex justify-center">
             <Image
-              src="/placeholder.svg?height=150&width=150&query=customer support with VPN"
+              src="/images/users.svg"
               alt="Customer Support"
-              width={150}
-              height={150}
-              className="w-full max-w-[150px] h-auto"
+              width={50}
+              height={50}
+              className="w-full max-w-[50px] h-auto"
             />
           </div>
         </div>
@@ -230,7 +221,7 @@ function DownloadCard({
     <div className="bg-white border border-gray-300 rounded-lg overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow">
       <div className="p-5 flex-1 flex flex-col">
         <div className="aspect-video relative mb-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-md overflow-hidden">
-          <Image src={image || "/placeholder.svg"} alt={`${title} app`} fill className="object-contain p-4" />
+          <Image src={image || "/placeholder.svg"} alt={`${title} app`} fill className="object-contain p-8" />
         </div>
 
         <h3 className="text-lg font-semibold">{title}</h3>
@@ -240,7 +231,7 @@ function DownloadCard({
           <span>•</span>
           <Badge variant="outline" className="text-xs font-normal bg-emerald-50 text-emerald-700 border-0">
             {version}
-          </Badge>
+          </Badge>      
         </div>
 
         <div className="mt-4 space-y-3">

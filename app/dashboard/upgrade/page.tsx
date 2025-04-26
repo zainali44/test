@@ -13,57 +13,101 @@ import {
     AlertTriangle,
     Database,
     Info,
+    Shield,
+    DollarSign,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 
 export default function UpgradePage() {
-    const [selectedPlan, setSelectedPlan] = useState<"2years" | "5years" | "3years">("5years")
-    const [addMaxPlan, setAddMaxPlan] = useState(false)
+    const [selectedPlan, setSelectedPlan] = useState<"individual" | "basic" | "premium">("premium")
+    const [selectedDuration, setSelectedDuration] = useState<"yearly" | "monthly">("yearly")
 
+    // Plan prices
+    const prices = {
+        monthly: {
+            individual: 500,
+            basic: 800,
+            premium: 2000,
+        },
+        yearly: {
+            individual: 400,
+            basic: 600,
+            premium: 1800,
+        }
+    }
+
+    // Plan details
     const plans = {
-        "2years": {
-            name: "2 Years Plan",
-            discount: "84% OFF",
-            originalPrice: "$358.00",
-            price: "$57.95",
-            expiry: "Oct 27, 2027",
+        individual: {
+            name: "Individual",
+            description: "Perfect for personal use with 1 device.",
+            devices: 1,
+            icon: <Zap className="h-5 w-5 text-emerald-600" />,
+            features: [
+                { name: "1 Device Connection", description: "Connect a single device" },
+                { name: "Unlimited Data", description: "No bandwidth restrictions" },
+                { name: "Standard Servers", description: "Access to all standard servers" },
+            ],
             isPopular: false,
         },
-        "5years": {
-            name: "5 Years Plan",
-            discount: "87% OFF",
-            originalPrice: "$897.00",
-            price: "$119.95",
-            expiry: "Oct 27, 2030",
+        basic: {
+            name: "Basic",
+            description: "Great for couples or dual-device users.",
+            devices: 2,
+            icon: <Shield className="h-5 w-5 text-emerald-600" />,
+            features: [
+                { name: "2 Device Connections", description: "Connect two devices at once" },
+                { name: "Unlimited Data", description: "No bandwidth restrictions" },
+                { name: "Premium Servers", description: "Access to premium and standard servers" },
+                { name: "Ad Blocker", description: "Block ads and trackers" },
+            ],
+            isPopular: false,
+        },
+        premium: {
+            name: "Premium",
+            description: "Ideal for families or multiple device users.",
+            devices: 5,
+            icon: <DollarSign className="h-5 w-5 text-emerald-600" />,
+            features: [
+                { name: "5 Device Connections", description: "Connect up to five devices at once" },
+                { name: "Unlimited Data", description: "No bandwidth restrictions" },
+                { name: "Premium Servers", description: "Access to all servers including dedicated IP" },
+                { name: "Ad Blocker", description: "Enhanced ad and tracker blocking" },
+                { name: "Split Tunneling", description: "Advanced app routing options" },
+                { name: "Advanced Security Features", description: "Additional encryption and protection" },
+                { name: "Priority Support", description: "24/7 priority customer support" },
+            ],
             isPopular: true,
         },
-        "3years": {
-            name: "3 Years Plan",
-            discount: "86% OFF",
-            originalPrice: "$538.00",
-            price: "$76.95",
-            expiry: "Oct 27, 2028",
-            isPopular: false,
-        },
     }
 
-    const maxPlan = {
-        name: "PureMax",
-        discount: "85% OFF",
-        originalPrice: "$1257.00",
-        price: "$189.95",
-        perMonth: "/ 5 years",
+    // Calculate yearly savings
+    const calculateYearlySavings = (plan: "individual" | "basic" | "premium") => {
+        const monthlyTotal = prices.monthly[plan] * 12
+        const yearlyTotal = prices.yearly[plan] * 12
+        return monthlyTotal - yearlyTotal
     }
 
-    const addOns = [{ name: "Port Forwarding", price: "$0.99/Month", total: "$59.40" }]
+    // Calculate total price
+    const calculateTotalPrice = (plan: "individual" | "basic" | "premium", duration: "yearly" | "monthly") => {
+        if (duration === "yearly") {
+            return (prices.yearly[plan] * 12).toFixed(0)
+        } else {
+            return prices.monthly[plan].toFixed(0)
+        }
+    }
 
-    const calculateTotal = () => {
-        const planPrice = Number.parseFloat(plans[selectedPlan].price.replace("$", ""))
-        const addOnsTotal = addOns.reduce((acc, addon) => acc + Number.parseFloat(addon.total.replace("$", "")), 0)
-        const maxPlanPrice = addMaxPlan ? Number.parseFloat(maxPlan.price.replace("$", "")) : 0
-        return (planPrice + addOnsTotal + maxPlanPrice).toFixed(2)
+    // Get expiry date
+    const getExpiryDate = (duration: "yearly" | "monthly") => {
+        const today = new Date()
+        if (duration === "yearly") {
+            today.setFullYear(today.getFullYear() + 1)
+        } else {
+            today.setMonth(today.getMonth() + 1)
+        }
+        return today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     }
 
     return (
@@ -92,7 +136,7 @@ export default function UpgradePage() {
                     <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Current Billing Cycle</div>
                     <div className="flex items-center">
                         <Calendar className="h-3.5 w-3.5 text-emerald-600 mr-1.5" />
-                        <span className="text-sm font-medium">12 Months</span>
+                        <span className="text-sm font-medium">Monthly</span>
                     </div>
                 </div>
 
@@ -100,7 +144,7 @@ export default function UpgradePage() {
                     <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Current Plan Type</div>
                     <div className="flex items-center">
                         <Package className="h-3.5 w-3.5 text-emerald-600 mr-1.5" />
-                        <span className="text-sm font-medium">Standard</span>
+                        <span className="text-sm font-medium">Individual</span>
                     </div>
                 </div>
 
@@ -116,68 +160,182 @@ export default function UpgradePage() {
             {/* Upgrade Offer */}
             <div className="mb-10">
                 <div className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-center py-2 px-4 rounded-t-lg text-sm font-medium">
-                    The Great Upgrade Offer!
+                    Special Upgrade Offer!
                 </div>
                 <div className="bg-white border-x border-b border-gray-200 rounded-b-sm p-6 text-center shadow-sm">
-                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Grab 5 years of CREST VPN at 86% OFF</h2>
-                    <p className="text-gray-600 text-sm">**That means you just pay 14% and the rest is our treat**</p>
+                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Save up to PKR 2,400 with yearly plans</h2>
+                    <p className="text-gray-600 text-sm">**Choose a yearly plan for the best value**</p>
+                </div>
+            </div>
+            
+            {/* Plan Duration Selection */}
+            <div className="flex justify-center mb-8">
+                <div className="inline-flex bg-gray-100 rounded-full p-1.5">
+                    {["monthly", "yearly"].map((duration) => (
+                        <button
+                            key={duration}
+                            onClick={() => setSelectedDuration(duration as "yearly" | "monthly")}
+                            className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
+                                selectedDuration === duration ? "bg-white shadow-md text-gray-900" : "text-gray-600"
+                            }`}
+                        >
+                            {duration === "yearly"
+                                ? "Yearly Billing"
+                                : "Monthly Billing"}
+                        </button>
+                    ))}
                 </div>
             </div>
 
             {/* Plan Selection */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                {/* 2 Years Plan */}
+                {/* Individual Plan */}
                 <div
-                    className={`border rounded-sm shadow-sm overflow-hidden transition-all duration-200 ${selectedPlan === "2years"
-                        ? "border-emerald-500 ring-1 ring-emerald-500"
-                        : "border-gray-200 hover:border-emerald-200"
-                        }`}
+                    className={`border rounded-sm shadow-sm overflow-hidden transition-all duration-200 ${
+                        selectedPlan === "individual"
+                            ? "border-emerald-500 ring-1 ring-emerald-500"
+                            : "border-gray-200 hover:border-emerald-200"
+                    }`}
                 >
                     <div className="bg-white p-5">
                         <div className="flex justify-between items-start mb-4">
                             <div>
-                                <Badge className="bg-emerald-100 text-emerald-800 border-0 mb-2">84% OFF</Badge>
-                                <h3 className="text-lg font-medium text-gray-900">2 Years Plan</h3>
+                                {selectedDuration === "yearly" && (
+                                    <Badge className="bg-emerald-100 text-emerald-800 border-0 mb-2">
+                                        Save PKR {calculateYearlySavings("individual")}
+                                    </Badge>
+                                )}
+                                <h3 className="text-lg font-medium text-gray-900">{plans.individual.name}</h3>
+                                <p className="text-xs text-gray-500 mt-1">{plans.individual.description}</p>
                             </div>
                             <div
-                                className={`w-5 h-5 rounded-full border flex items-center justify-center ${selectedPlan === "2years" ? "border-emerald-500 bg-emerald-500" : "border-gray-300"
-                                    }`}
-                                onClick={() => setSelectedPlan("2years")}
+                                className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                                    selectedPlan === "individual" ? "border-emerald-500 bg-emerald-500" : "border-gray-300"
+                                }`}
+                                onClick={() => setSelectedPlan("individual")}
                             >
-                                {selectedPlan === "2years" && <Check className="h-3 w-3 text-white" />}
+                                {selectedPlan === "individual" && <Check className="h-3 w-3 text-white" />}
                             </div>
                         </div>
 
                         <div className="mb-4">
-                            <div className="text-gray-500 line-through text-sm">{plans["2years"].originalPrice}</div>
                             <div className="flex items-baseline">
-                                <span className="text-3xl font-bold text-gray-900">{plans["2years"].price}</span>
-                                <span className="text-gray-500 ml-1 text-sm">($2.42/mo)</span>
+                                <span className="text-3xl font-bold text-gray-900">PKR {prices[selectedDuration].individual}</span>
+                                <span className="text-gray-500 ml-1 text-sm">/month</span>
                             </div>
+                            {selectedDuration === "yearly" && (
+                                <div className="text-xs text-emerald-600 font-medium mt-1">
+                                    Billed as PKR {calculateTotalPrice("individual", "yearly")} per year
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-2.5 mb-6">
+                            {plans.individual.features.map((feature, index) => (
+                                <div key={index} className="flex items-start">
+                                    <Check className="h-4 w-4 text-emerald-500 mt-0.5 mr-2 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-900">{feature.name}</p>
+                                        <p className="text-xs text-gray-500">{feature.description}</p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
                         <Button
-                            className={`w-full ${selectedPlan === "2years"
-                                ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white rounded-lg"
-                                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                                }`}
-                            onClick={() => setSelectedPlan("2years")}
+                            className={`w-full ${
+                                selectedPlan === "individual"
+                                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white rounded-lg"
+                                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                            }`}
+                            onClick={() => setSelectedPlan("individual")}
                         >
-                            {selectedPlan === "2years" ? "Selected" : "Upgrade to 2 Years Plan"}
+                            {selectedPlan === "individual" ? "Selected" : "Select Plan"}
                         </Button>
 
                         <div className="text-xs text-gray-500 mt-3 text-center">
-                            After upgrade your plan will expire on {plans["2years"].expiry}
+                            Next renewal on {getExpiryDate(selectedDuration)}
                         </div>
                     </div>
                 </div>
 
-                {/* 5 Years Plan */}
+                {/* Basic Plan */}
                 <div
-                    className={`border rounded-md shadow-sm overflow-hidden transition-all duration-200 ${selectedPlan === "5years"
-                        ? "border-emerald-500 ring-1 ring-emerald-500"
-                        : "border-gray-200 hover:border-emerald-200"
-                        }`}
+                    className={`border rounded-md shadow-sm overflow-hidden transition-all duration-200 ${
+                        selectedPlan === "basic"
+                            ? "border-emerald-500 ring-1 ring-emerald-500"
+                            : "border-gray-200 hover:border-emerald-200"
+                    }`}
+                >
+                    <div className="bg-white p-5">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                {selectedDuration === "yearly" && (
+                                    <Badge className="bg-emerald-100 text-emerald-800 border-0 mb-2">
+                                        Save PKR {calculateYearlySavings("basic")}
+                                    </Badge>
+                                )}
+                                <h3 className="text-lg font-medium text-gray-900">{plans.basic.name}</h3>
+                                <p className="text-xs text-gray-500 mt-1">{plans.basic.description}</p>
+                            </div>
+                            <div
+                                className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                                    selectedPlan === "basic" ? "border-emerald-500 bg-emerald-500" : "border-gray-300"
+                                }`}
+                                onClick={() => setSelectedPlan("basic")}
+                            >
+                                {selectedPlan === "basic" && <Check className="h-3 w-3 text-white" />}
+                            </div>
+                        </div>
+
+                        <div className="mb-4">
+                            <div className="flex items-baseline">
+                                <span className="text-3xl font-bold text-gray-900">PKR {prices[selectedDuration].basic}</span>
+                                <span className="text-gray-500 ml-1 text-sm">/month</span>
+                            </div>
+                            {selectedDuration === "yearly" && (
+                                <div className="text-xs text-emerald-600 font-medium mt-1">
+                                    Billed as PKR {calculateTotalPrice("basic", "yearly")} per year
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-2.5 mb-6">
+                            {plans.basic.features.map((feature, index) => (
+                                <div key={index} className="flex items-start">
+                                    <Check className="h-4 w-4 text-emerald-500 mt-0.5 mr-2 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-900">{feature.name}</p>
+                                        <p className="text-xs text-gray-500">{feature.description}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <Button
+                            className={`w-full ${
+                                selectedPlan === "basic"
+                                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white"
+                                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                            }`}
+                            onClick={() => setSelectedPlan("basic")}
+                        >
+                            {selectedPlan === "basic" ? "Selected" : "Select Plan"}
+                        </Button>
+
+                        <div className="text-xs text-gray-500 mt-3 text-center">
+                            Next renewal on {getExpiryDate(selectedDuration)}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Premium Plan */}
+                <div
+                    className={`border rounded-sm shadow-sm overflow-hidden transition-all duration-200 ${
+                        selectedPlan === "premium"
+                            ? "border-emerald-500 ring-1 ring-emerald-500"
+                            : "border-gray-200 hover:border-emerald-200"
+                    }`}
                 >
                     <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white text-center py-1 text-xs font-medium">
                         MOST POPULAR
@@ -185,290 +343,89 @@ export default function UpgradePage() {
                     <div className="bg-white p-5">
                         <div className="flex justify-between items-start mb-4">
                             <div>
-                                <Badge className="bg-emerald-100 text-emerald-800 border-0 mb-2">87% OFF</Badge>
-                                <h3 className="text-lg font-medium text-gray-900">5 Years Plan</h3>
-                            </div>
-                            <div
-                                className={`w-5 h-5 rounded-full border flex items-center justify-center ${selectedPlan === "5years" ? "border-emerald-500 bg-emerald-500" : "border-gray-300"
-                                    }`}
-                                onClick={() => setSelectedPlan("5years")}
-                            >
-                                {selectedPlan === "5years" && <Check className="h-3 w-3 text-white" />}
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <div className="text-gray-500 line-through text-sm">{plans["5years"].originalPrice}</div>
-                            <div className="flex items-baseline">
-                                <span className="text-3xl font-bold text-gray-900">{plans["5years"].price}</span>
-                                <span className="text-gray-500 ml-1 text-sm">($1.99/mo)</span>
-                            </div>
-                        </div>
-
-                        <Button
-                            className={`w-full ${selectedPlan === "5years"
-                                ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white"
-                                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                                }`}
-                            onClick={() => setSelectedPlan("5years")}
-                        >
-                            {selectedPlan === "5years" ? "Selected" : "Upgrade to 5 Years Plan"}
-                        </Button>
-
-                        <div className="text-xs text-gray-500 mt-3 text-center">
-                            After upgrade your plan will expire on {plans["5years"].expiry}
-                        </div>
-                    </div>
-                </div>
-
-                {/* 3 Years Plan */}
-                <div
-                    className={`border rounded-sm shadow-sm overflow-hidden transition-all duration-200 ${selectedPlan === "3years"
-                        ? "border-emerald-500 ring-1 ring-emerald-500"
-                        : "border-gray-200 hover:border-emerald-200"
-                        }`}
-                >
-                    <div className="bg-white p-5">
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <Badge className="bg-emerald-100 text-emerald-800 border-0 mb-2">86% OFF</Badge>
-                                <h3 className="text-lg font-medium text-gray-900">3 Years Plan</h3>
-                            </div>
-                            <div
-                                className={`w-5 h-5 rounded-full border flex items-center justify-center ${selectedPlan === "3years" ? "border-emerald-500 bg-emerald-500" : "border-gray-300"
-                                    }`}
-                                onClick={() => setSelectedPlan("3years")}
-                            >
-                                {selectedPlan === "3years" && <Check className="h-3 w-3 text-white" />}
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <div className="text-gray-500 line-through text-sm">{plans["3years"].originalPrice}</div>
-                            <div className="flex items-baseline">
-                                <span className="text-3xl font-bold text-gray-900">{plans["3years"].price}</span>
-                                <span className="text-gray-500 ml-1 text-sm">($2.14/mo)</span>
-                            </div>
-                        </div>
-
-                        <Button
-                            className={`w-full ${selectedPlan === "3years"
-                                ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white"
-                                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                                }`}
-                            onClick={() => setSelectedPlan("3years")}
-                        >
-                            {selectedPlan === "3years" ? "Selected" : "Upgrade to 3 Years Plan"}
-                        </Button>
-
-                        <div className="text-xs text-gray-500 mt-3 text-center">
-                            After upgrade your plan will expire on {plans["3years"].expiry}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Max Plan */}
-            <div className="mb-12">
-                <h2 className="text-xl font-medium text-gray-900 mb-6 text-center">
-                    Super charge your internet freedom with Max Plan
-                </h2>
-
-                <div className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                    <div className="grid grid-cols-1 md:grid-cols-2">
-                        <div className="p-6 bg-white border-b md:border-b-0 md:border-r border-gray-200">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="text-lg font-medium text-gray-900 mb-1">PureMax</h3>
-                                    <Badge className="bg-emerald-100 text-emerald-800 border-0">85% OFF</Badge>
-                                </div>
-                                <div
-                                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${addMaxPlan ? "border-emerald-500 bg-emerald-500" : "border-gray-300"
-                                        }`}
-                                    onClick={() => setAddMaxPlan(!addMaxPlan)}
-                                >
-                                    {addMaxPlan && <Check className="h-3 w-3 text-white" />}
-                                </div>
-                            </div>
-
-                            <div className="mb-4">
-                                <div className="text-gray-500 line-through text-sm">{maxPlan.originalPrice}</div>
-                                <div className="flex items-baseline">
-                                    <span className="text-3xl font-bold text-gray-900">{maxPlan.price}</span>
-                                    <span className="text-gray-500 ml-1 text-sm">{maxPlan.perMonth}</span>
-                                </div>
-                            </div>
-
-                            <Button
-                                className={`${addMaxPlan
-                                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white"
-                                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                                    }`}
-                                onClick={() => setAddMaxPlan(!addMaxPlan)}
-                            >
-                                {addMaxPlan ? "Added" : "Add"}
-                            </Button>
-                        </div>
-
-                        <div className="p-6 bg-white">
-                            <ul className="space-y-4">
-                                <li className="flex">
-                                    <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center mr-3 flex-shrink-0">
-                                        <Globe className="h-3 w-3 text-purple-700" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-900">Full featured VPN:</p>
-                                        <p className="text-xs text-gray-600">
-                                            Bring internet freedom at your fingertips. Encrypt your internet connection, access everything
-                                        </p>
-                                    </div>
-                                </li>
-
-                                <li className="flex">
-                                    <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center mr-3 flex-shrink-0">
-                                        <Database className="h-3 w-3 text-purple-700" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-900">Remove my Data:</p>
-                                        <p className="text-xs text-gray-600">
-                                            Get your personal information removed from data brokers across the globe.
-                                        </p>
-                                    </div>
-                                </li>
-
-                                <li className="flex">
-                                    <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center mr-3 flex-shrink-0">
-                                        <AlertTriangle className="h-3 w-3 text-purple-700" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-900">Dark Web Monitoring:</p>
-                                        <p className="text-xs text-gray-600">
-                                            Receive instant alerts if your personal data is compromised on the Dark Web.
-                                        </p>
-                                    </div>
-                                </li>
-
-                                <li className="flex">
-                                    <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center mr-3 flex-shrink-0">
-                                        <Key className="h-3 w-3 text-purple-700" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-900">Password Manager:</p>
-                                        <p className="text-xs text-gray-600">
-                                            Safely store, manage, access and autofill passwords from anywhere.
-                                        </p>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Order Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2">
-                    <h2 className="text-xl font-medium text-gray-900 mb-4">Order Confirmation</h2>
-
-                    <div className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden">
-                        <div className="p-6">
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-900">
-                                            Upgrade to {plans[selectedPlan].name} At {plans[selectedPlan].discount}
-                                        </p>
-                                        <p className="text-xs text-gray-500">This plan will expire on: {plans[selectedPlan].expiry}</p>
-                                    </div>
-                                    <span className="text-sm font-medium">{plans[selectedPlan].price}</span>
-                                </div>
-
-                                {addOns.map((addon, index) => (
-                                    <div key={index} className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900">
-                                                {addon.name}: {addon.price}
-                                            </p>
-                                        </div>
-                                        <span className="text-sm font-medium">{addon.total}</span>
-                                    </div>
-                                ))}
-
-                                {addMaxPlan && (
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900">PureMax: Premium Security Suite</p>
-                                        </div>
-                                        <span className="text-sm font-medium">{maxPlan.price}</span>
-                                    </div>
+                                {selectedDuration === "yearly" && (
+                                    <Badge className="bg-emerald-100 text-emerald-800 border-0 mb-2">
+                                        Save PKR {calculateYearlySavings("premium")}
+                                    </Badge>
                                 )}
+                                <h3 className="text-lg font-medium text-gray-900">{plans.premium.name}</h3>
+                                <p className="text-xs text-gray-500 mt-1">{plans.premium.description}</p>
                             </div>
-
-                            <Separator className="my-4" />
-
-                            <div className="flex justify-between items-center">
-                                <span className="text-base font-medium text-gray-900">Total:</span>
-                                <span className="text-xl font-bold text-gray-900">${calculateTotal()}</span>
-                            </div>
-
-                            <Button
-                                className="w-full mt-6 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white"
-                                size="lg"
+                            <div
+                                className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                                    selectedPlan === "premium" ? "border-emerald-500 bg-emerald-500" : "border-gray-300"
+                                }`}
+                                onClick={() => setSelectedPlan("premium")}
                             >
-                                Upgrade to {plans[selectedPlan].name}
-                            </Button>
+                                {selectedPlan === "premium" && <Check className="h-3 w-3 text-white" />}
+                            </div>
+                        </div>
+
+                        <div className="mb-4">
+                            <div className="flex items-baseline">
+                                <span className="text-3xl font-bold text-gray-900">PKR {prices[selectedDuration].premium}</span>
+                                <span className="text-gray-500 ml-1 text-sm">/month</span>
+                            </div>
+                            {selectedDuration === "yearly" && (
+                                <div className="text-xs text-emerald-600 font-medium mt-1">
+                                    Billed as PKR {calculateTotalPrice("premium", "yearly")} per year
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-2.5 mb-6">
+                            {plans.premium.features.map((feature, index) => (
+                                <div key={index} className="flex items-start">
+                                    <Check className="h-4 w-4 text-emerald-500 mt-0.5 mr-2 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-900">{feature.name}</p>
+                                        <p className="text-xs text-gray-500">{feature.description}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <Button
+                            className={`w-full ${
+                                selectedPlan === "premium"
+                                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white rounded-lg"
+                                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                            }`}
+                            onClick={() => setSelectedPlan("premium")}
+                        >
+                            {selectedPlan === "premium" ? "Selected" : "Select Plan"}
+                        </Button>
+
+                        <div className="text-xs text-gray-500 mt-3 text-center">
+                            Next renewal on {getExpiryDate(selectedDuration)}
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div>
-                    <h2 className="text-xl font-medium text-gray-900 mb-4">CREST VPN plan includes:</h2>
-
-                    <div className="bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden">
-                        <div className="p-4">
-                            <ul className="space-y-3">
-                                <li className="flex items-center py-2 border-b border-gray-100">
-                                    <Check className="h-4 w-4 text-emerald-600 mr-2" />
-                                    <span className="text-sm text-gray-700">All future updates and releases</span>
-                                </li>
-                                <li className="flex items-center py-2 border-b border-gray-100">
-                                    <Check className="h-4 w-4 text-emerald-600 mr-2" />
-                                    <span className="text-sm text-gray-700">All premium features & apps</span>
-                                </li>
-                                <li className="flex items-center py-2 border-b border-gray-100">
-                                    <Check className="h-4 w-4 text-emerald-600 mr-2" />
-                                    <span className="text-sm text-gray-700">Access to 6500+ VPN servers</span>
-                                </li>
-                                <li className="flex items-center py-2 border-b border-gray-100">
-                                    <Check className="h-4 w-4 text-emerald-600 mr-2" />
-                                    <span className="text-sm text-gray-700">Login up to 10 devices at a time</span>
-                                </li>
-                                <li className="flex items-center py-2 border-b border-gray-100">
-                                    <Check className="h-4 w-4 text-emerald-600 mr-2" />
-                                    <span className="text-sm text-gray-700">24/7 customer support</span>
-                                </li>
-                                <li className="flex items-center py-2">
-                                    <Check className="h-4 w-4 text-emerald-600 mr-2" />
-                                    <span className="text-sm text-gray-700">31-day money-back guarantee</span>
-                                </li>
-                            </ul>
-                        </div>
+            {/* Checkout Button */}
+            <div className="bg-gray-50 p-6 border border-gray-200 rounded-md shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                    <div>
+                        <p className="text-sm font-medium text-gray-900">Total Amount</p>
+                        <p className="text-xs text-gray-500">
+                            {selectedDuration === "yearly" ? "Annual" : "Monthly"} billing for {plans[selectedPlan].name} plan
+                        </p>
                     </div>
-
-                    <div className="mt-4 bg-amber-50 border border-amber-200 rounded-sm p-4">
-                        <div className="flex">
-                            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center mr-3 flex-shrink-0">
-                                <Info className="h-4 w-4 text-amber-700" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-amber-800 mb-1">Satisfaction Guaranteed</p>
-                                <p className="text-xs text-amber-700">
-                                    Try our service risk-free. If you're not 100% satisfied, simply request a refund within 31 days.
-                                </p>
-                            </div>
-                        </div>
+                    <div className="text-xl font-bold text-gray-900">
+                        PKR {selectedDuration === "yearly" 
+                            ? calculateTotalPrice(selectedPlan, "yearly") 
+                            : prices.monthly[selectedPlan]}
                     </div>
                 </div>
+                
+                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6">
+                    Proceed to Payment
+                </Button>
+                
+                <p className="text-xs text-gray-500 mt-3 text-center">
+                    Your subscription includes a 30-day money-back guarantee
+                </p>
             </div>
         </div>
     )

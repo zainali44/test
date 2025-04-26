@@ -21,7 +21,8 @@ export default function CheckoutPage() {
   const planPrice = Number.parseFloat(searchParams?.get("price") || "109.95")
   const originalPrice = Number.parseFloat(searchParams?.get("originalPrice") || "598.50")
   const discount = Number.parseInt(searchParams?.get("discount") || "82")
-  const monthlyRate = searchParams?.get("monthlyRate") || "$3.66/mo"
+  const monthlyRate = searchParams?.get("monthlyRate") || "PKR17.00/mo"
+  const teamMembers = Number.parseInt(searchParams?.get("teamMembers") || "5")
 
   const [step, setStep] = useState(1)
   const [showPassword, setShowPassword] = useState(false)
@@ -171,7 +172,6 @@ export default function CheckoutPage() {
   if (showSuccess) {
     return (
       <div className="min-h-screen bg-gray-50">
-
         <div className="max-w-3xl mx-auto pt-32 pb-20 px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -193,12 +193,15 @@ export default function CheckoutPage() {
               <div className="flex justify-between mb-2">
                 <span className="text-gray-600">Plan:</span>
                 <span className="font-medium">
-                  {planName} ({planDuration})
+                  {planName === "Teams" 
+                    ? `${planName} (${teamMembers} users)` 
+                    : `${planName} (${planDuration})`
+                  }
                 </span>
               </div>
               <div className="flex justify-between mb-2">
                 <span className="text-gray-600">Amount paid:</span>
-                <span className="font-medium">${planPrice.toFixed(2)}</span>
+                <span className="font-medium">PKR {planPrice.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Payment method:</span>
@@ -225,7 +228,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-
       {/* Minimal Header */}
       <header className="fixed top-0 left-0 right-0 bg-white shadow-sm z-40" style={{ top: "24px" }}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -406,7 +408,7 @@ export default function CheckoutPage() {
                               <CreditCard className="h-5 w-5 text-gray-400" />
                             </div>
                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
-                            <div className="flex space-x-1">
+                              <div className="flex space-x-1">
                                 <svg width="24" height="16" viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <rect width="24" height="16" rx="2" fill="#1A1F71"/>
                                     <path d="M9.3 11.2H7.1L8.7 4.8H10.9L9.3 11.2ZM14.9 5C14.5 4.9 14.1 4.8 13.6 4.8C11.8 4.8 10.5 5.8 10.5 7.2C10.5 8.2 11.4 8.8 12.1 9.1C12.8 9.4 13 9.6 13 9.9C13 10.3 12.5 10.5 12 10.5C11.4 10.5 10.7 10.4 10.1 10.1L9.8 10L9.5 11.8C10 12 10.8 12.1 11.7 12.1C13.6 12.1 14.9 11.1 14.9 9.6C14.9 8.7 14.3 8.1 13.3 7.7C12.7 7.4 12.3 7.2 12.3 6.9C12.3 6.6 12.6 6.3 13.3 6.3C13.9 6.3 14.4 6.4 14.7 6.5L14.9 6.6L15.2 4.9L14.9 5ZM19.4 4.8H17.7C17.3 4.8 17 4.9 16.8 5.3L14.5 11.2H16.7L17.1 10.1H19.5L19.7 11.2H21.7L20.1 4.8H19.4ZM17.6 8.7L18.4 6.6L18.8 8.7H17.6Z" fill="white"/>
@@ -421,9 +423,8 @@ export default function CheckoutPage() {
                                     <path d="M12 4L13.5 7.5H10.5L12 4ZM12 12L10.5 8.5H13.5L12 12Z" fill="white"/>
                                     <path d="M4 4H6.5L8 8.5L9.5 4H12L9 12H7L4 4ZM15 4H20V5.5H16.5V7H19.5V8.5H16.5V10H20V11.5H15V4Z" fill="white"/>
                                 </svg>
-                                </div>
+                              </div>
                             </div>
-
                           </div>
                           {errors.cardNumber && <p className="text-red-500 text-sm mt-1">{errors.cardNumber}</p>}
                         </div>
@@ -506,7 +507,7 @@ export default function CheckoutPage() {
                               <span>Processing...</span>
                             </div>
                           ) : (
-                            <span>Pay ${planPrice.toFixed(2)}</span>
+                            <span>Pay PKR {planPrice.toFixed(2)}</span>
                           )}
                         </Button>
                       </div>
@@ -540,20 +541,26 @@ export default function CheckoutPage() {
                   <div>
                     <h3 className="font-bold">{planName}</h3>
                     <p className="text-sm text-gray-600">
-                      {planDuration} plan ({monthlyRate})
+                      {planName === "Teams" 
+                        ? `${teamMembers} users (${monthlyRate} per user)` 
+                        : `${planDuration} plan (${monthlyRate})`}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="line-through text-gray-500 text-sm">${originalPrice.toFixed(2)}</p>
+                  {planName !== "Teams" && (
+                    <div className="text-right">
+                      <p className="line-through text-gray-500 text-sm">PKR {originalPrice.toFixed(2)}</p>
+                    </div>
+                  )}
+                </div>
+
+                {planName !== "Teams" && (
+                  <div className="flex items-center justify-between bg-yellow-50 rounded-full px-3 py-1 mb-2">
+                    <span className="text-xs font-medium text-yellow-800">Save {discount}%</span>
+                    <span className="text-xs text-yellow-800">+6 months</span>
                   </div>
-                </div>
+                )}
 
-                <div className="flex items-center justify-between bg-yellow-50 rounded-full px-3 py-1 mb-2">
-                  <span className="text-xs font-medium text-yellow-800">Save {discount}%</span>
-                  <span className="text-xs text-yellow-800">+6 months</span>
-                </div>
-
-                <div className="text-right font-bold">${planPrice.toFixed(2)}</div>
+                <div className="text-right font-bold">PKR {planPrice.toFixed(2)}</div>
               </div>
 
               {showCouponField ? (
@@ -589,7 +596,7 @@ export default function CheckoutPage() {
 
               <div className="flex justify-between items-center pt-2 mb-6">
                 <span className="font-medium">Total</span>
-                <span className="font-bold text-xl">${planPrice.toFixed(2)}</span>
+                <span className="font-bold text-xl">PKR {planPrice.toFixed(2)}</span>
               </div>
 
               <div className="flex items-center justify-center gap-2 text-sm text-gray-600">

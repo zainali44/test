@@ -1,7 +1,11 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getCurrentUser, ApiResponse } from "@/app/utils/auth"
+import { NextResponse } from "next/server"
+import { ApiResponse } from "@/app/utils/auth"
+import { getCurrentUser } from "@/app/utils/server-auth"
 
-export async function GET(request: NextRequest) {
+// Force this route to be dynamically rendered
+export const dynamic = "force-dynamic"
+
+export async function GET() {
   try {
     // Get current user from auth cookie
     const user = getCurrentUser()

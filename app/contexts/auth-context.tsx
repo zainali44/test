@@ -3,11 +3,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "react-hot-toast"
-
-interface User {
-  id: string
-  email: string
-}
+import { 
+  storeUserData, 
+  getUserData, 
+  clearUserData, 
+  User, 
+  storeAuthToken,
+  getAuthToken,
+  clearAuthToken 
+} from "@/app/utils/auth"
 
 interface AuthContextType {
   user: User | null
@@ -63,12 +67,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Save token
       const authToken = data.data.token
       setToken(authToken)
-      localStorage.setItem("auth-token", authToken)
+      
+      // Store token in localStorage
+      storeAuthToken(authToken)
 
-      // Now get the user info by validating the token
+      // If user data is included in the login response, use it directly
+      if (data.data.user) {
+        const userData = data.data.user;
+        
+        // Save the user information in state and persistent storage
+        setUser(userData)
+        storeUserData(userData)
+        
+        // Show success toast
+        toast.success("Logged in successfully")
+        
+        // Redirect to dashboard
+        router.push("/dashboard")
+        return;
+      }
+
+      // Otherwise, validate the token to get user info (fallback)
       const validationResponse = await validateToken(authToken)
       if (validationResponse.data.valid) {
-        setUser(validationResponse.data.user)
+        const userData = validationResponse.data.user;
+        setUser(userData)
+        storeUserData(userData)
         
         // Show success toast
         toast.success("Logged in successfully")
@@ -96,7 +120,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Clear auth state
       setUser(null)
       setToken(null)
-      localStorage.removeItem("auth-token")
+      
+      // Clear stored data
+      clearAuthToken()
+      clearUserData()
       
       // Show success toast
       toast.success("Logged out successfully")
@@ -113,24 +140,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const checkAuth = async (): Promise<boolean> => {
     try {
-      // Check for token in localStorage
-      const storedToken = localStorage.getItem("auth-token")
-      if (!storedToken) {
-        return false
-      }
-
-      // Validate the token
-      const validationResponse = await validateToken(storedToken)
+      // First check if we have user data in storage
+      const storedUser = getUserData()
+      const storedToken = getAuthToken()
       
-      if (validationResponse.data.valid) {
+      if (storedUser && storedToken) {
+        // If we already have the user data, use it
+        setUser(storedUser)
         setToken(storedToken)
-        setUser(validationResponse.data.user)
         return true
-      } else {
-        // Clear invalid token
-        localStorage.removeItem("auth-token")
-        return false
+      } else if (storedToken) {
+        // If we have a token but no user data, validate the token
+        
+        // Check if we already have a user with this token to prevent unnecessary API calls
+        if (user && token === storedToken) {
+          return true
+        }
+
+        // Validate the token
+        const validationResponse = await validateToken(storedToken)
+        
+        if (validationResponse.data.valid && validationResponse.data.user) {
+          const userData = validationResponse.data.user;
+          setToken(storedToken)
+          setUser(userData)
+          storeUserData(userData)
+          return true
+        } else {
+          // Clear invalid token
+          clearAuthToken()
+          clearUserData()
+          return false
+        }
       }
+      
+      return false
     } catch (err) {
       console.error("Auth check failed:", err)
       return false

@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
-import { removeAuthCookie, ApiResponse } from "@/app/utils/auth"
+import { ApiResponse } from "@/app/utils/auth"
+import { cookies } from "next/headers"
+
+// Server-side function to remove auth cookie
+function removeAuthCookie(): void {
+  cookies().delete("auth-token")
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // Remove the auth cookie
+    // Remove auth cookie
     removeAuthCookie()
-
-    // Return success response
+    
     return NextResponse.json(
       { 
         status: "success", 

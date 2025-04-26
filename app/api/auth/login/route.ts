@@ -1,14 +1,26 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createToken, ApiResponse } from "@/app/utils/auth"
+import { ApiResponse, User } from "@/app/utils/auth"
+import { jwtDecode } from "jwt-decode"
+import { cookies } from "next/headers"
 
-// Mock user database - in a real app, you would use a database
-const USERS = [
-  {
-    id: "1",
-    email: "user@example.com",
-    password: "password123", // In a real app, this would be hashed
-  },
-]
+interface JWTPayload {
+  id?: string | number;
+  email?: string;
+  name?: string;
+  [key: string]: any;           
+}
+
+// Server-side function to set auth cookie
+function setAuthCookie(token: string): void {
+  cookies().set({
+    name: "auth-token",
+    value: token,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+    path: "/",
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,14 +37,24 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    console.log(process.env.NEXTAPI_URL)
 
-    // Find user in the mock database
-    const user = USERS.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase()
-    )
+    // Call external login API
+    const response = await fetch(`${process.env.NEXTAPI_URL}/users/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': '*/*'
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-    // If user not found, return 404
-    if (!user) {
+    // console.log(response) 
+
+    const data = await response.json();
+
+    // Handle different response statuses
+    if (response.status === 404) {
       return NextResponse.json(
         { 
           status: "error", 
@@ -42,8 +64,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate password (in a real app, you would compare hash)
-    if (user.password !== password) {
+    if (response.status === 401) {
       return NextResponse.json(
         { 
           status: "error", 
@@ -53,17 +74,62 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create JWT token
-    const token = await createToken({
-      id: user.id,
-      email: user.email,
-    })
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: response.status === 406 
+            ? "You need to verify your Email. If not received, check your spam folder"
+            : data.error || "Authentication failed"
+        } as ApiResponse,
+        { status: response.status }
+      )
+    }
 
-    // Return success response with token
+    // API returns a token directly
+    const token = data.token;
+
+    if (!token) {
+      return NextResponse.json(
+        { 
+          status: "error", 
+          message: "No token received from authentication server" 
+        } as ApiResponse,
+        { status: 500 }
+      )
+    }
+
+    // Try to decode the token to extract user information
+    let userData: User = { id: "1", email: email };
+    
+    try {
+      const decoded = jwtDecode<JWTPayload>(token);
+
+      console.log(decoded)
+      
+      // Update user data with information from token if available
+      if (decoded) {
+        userData = {
+          id: decoded.id?.toString() || "1",
+          email: decoded.email || email,
+          name: decoded.name
+        };
+      }
+    } catch (decodeError) {
+      console.error("Error decoding token, using fallback user data:", decodeError);
+    }
+
+    // Set auth cookie
+    setAuthCookie(token)
+
+    // Return success response with token and user data
     return NextResponse.json(
       { 
         status: "success", 
-        data: { token } 
+        data: { 
+          token,
+          user: userData
+        } 
       } as ApiResponse,
       { status: 200 }
     )

@@ -3,10 +3,19 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Shield, Menu, X } from "lucide-react"
+import { Shield, Menu, X, User, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@/app/contexts/auth-context"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 // Simplified nav items as requested
 const navItems = [
@@ -28,6 +37,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
+  const { user, logout } = useAuth()
 
   // Set scrolled to true by default on pages other than home
   const isNotHomePage = pathname !== "/"
@@ -174,29 +184,66 @@ export default function Navbar() {
               animate="show"
               className="hidden lg:flex items-center gap-4"
             >
-              <motion.div variants={itemAnimation}>
-                <Link
-                  href="/login"
-                  className={cn(
-                    "transition-all duration-300 text-xs",
-                    scrolled
-                      ? "text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400 bg-transparent"
-                      : "text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40 bg-transparent hover:shadow-lg hover:shadow-white/20 rounded-full px-5 py-2 flex items-center gap-2",
-                  )}
-                >
-                  Login
-                </Link>
-              </motion.div>
+              {user ? (
+                <motion.div variants={itemAnimation} className="flex items-center gap-3">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-full transition-all duration-300",
+                      scrolled 
+                        ? "bg-gray-100 text-gray-700 hover:bg-gray-200" 
+                        : "bg-white/10 text-white hover:bg-white/20"
+                    )}>
+                      <User className="h-4 w-4" />
+                      <span className="text-xs font-medium truncate max-w-[120px]">
+                        {user.name || user.email}
+                      </span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 bg-white border border-gray-100">
+                      <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <span className="text-xs truncate w-full max-w-[200px]">{user.email}</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Link href="/dashboard" className="flex w-full">Dashboard</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Link href="/profile" className="flex w-full">Profile</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600 cursor-pointer">
+                        <LogOut className="h-4 w-4 mr-2" />
+                        <span>Logout</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </motion.div>
+              ) : (
+                <>
+                  <motion.div variants={itemAnimation}>
+                    <Link
+                      href="/login"
+                      className={cn(
+                        "transition-all duration-300 text-xs",
+                        scrolled
+                          ? "text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400 bg-transparent"
+                          : "text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40 bg-transparent hover:shadow-lg hover:shadow-white/20 rounded-full px-5 py-2 flex items-center gap-2",
+                      )}
+                    >
+                      Login
+                    </Link>
+                  </motion.div>
 
-              <motion.div variants={itemAnimation}>
-                <Button
-                  size="sm"
-                  className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-lg shadow-red-600/20 border-0 transition-all duration-300 text-xs rounded-full px-8 py-4 flex items-center gap-2"
-                  
-                >
-                  Get CREST VPN
-                </Button>
-              </motion.div>
+                  <motion.div variants={itemAnimation}>
+                    <Button
+                      size="sm"
+                      className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-lg shadow-red-600/20 border-0 transition-all duration-300 text-xs rounded-full px-8 py-4 flex items-center gap-2"
+                    >
+                      Get CREST VPN
+                    </Button>
+                  </motion.div>
+                </>
+              )}
             </motion.div>
 
             <motion.button
@@ -314,49 +361,139 @@ export default function Navbar() {
               </nav>
 
               <div className="flex flex-col gap-3 mt-4">
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{
-                    y: 0,
-                    opacity: 1,
-                    transition: {
-                      delay: 0.4,
-                      duration: 0.5,
-                      ease: "easeOut",
-                    },
-                  }}
-                  exit={{ y: 20, opacity: 0 }}
-                >
-                  <Link
-                    href="/login"
-                    className={cn(
-                      "transition-all duration-300 text-xs",
-                      scrolled
-                        ? "text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400"
-                        : "text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40",
-                    )}
-                  >
-                    Login
-                  </Link>
-                </motion.div>
+                {user ? (
+                  <>
+                    <motion.div
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{
+                        y: 0,
+                        opacity: 1,
+                        transition: {
+                          delay: 0.4,
+                          duration: 0.5,
+                          ease: "easeOut",
+                        },
+                      }}
+                      exit={{ y: 20, opacity: 0 }}
+                      className={cn(
+                        "p-4 rounded-lg transition-all duration-300",
+                        scrolled ? "bg-gray-100" : "bg-white/10"
+                      )}
+                    >
+                      <div className="flex flex-col gap-1">
+                        <p className={cn(
+                          "font-medium",
+                          scrolled ? "text-gray-700" : "text-white"
+                        )}>
+                          {user.name || "Account"}
+                        </p>
+                        <p className={cn(
+                          "text-xs truncate",
+                          scrolled ? "text-gray-500" : "text-white/70"
+                        )}>
+                          {user.email}
+                        </p>
+                      </div>
+                    </motion.div>
+                    
+                    <motion.div
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{
+                        y: 0,
+                        opacity: 1,
+                        transition: {
+                          delay: 0.5,
+                          duration: 0.5,
+                          ease: "easeOut",
+                        },
+                      }}
+                      exit={{ y: 20, opacity: 0 }}
+                    >
+                      <Link href="/dashboard">
+                        <Button 
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-base py-6",
+                            scrolled 
+                              ? "border-gray-200 text-gray-700" 
+                              : "border-white/20 text-white"
+                          )}
+                        >
+                          Dashboard
+                        </Button>
+                      </Link>
+                    </motion.div>
+                    
+                    <motion.div
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{
+                        y: 0,
+                        opacity: 1,
+                        transition: {
+                          delay: 0.6,
+                          duration: 0.5,
+                          ease: "easeOut",
+                        },
+                      }}
+                      exit={{ y: 20, opacity: 0 }}
+                    >
+                      <Button 
+                        variant="destructive"
+                        onClick={logout}
+                        className="w-full text-white py-6 text-base"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Logout
+                      </Button>
+                    </motion.div>
+                  </>
+                ) : (
+                  <>
+                    <motion.div
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{
+                        y: 0,
+                        opacity: 1,
+                        transition: {
+                          delay: 0.4,
+                          duration: 0.5,
+                          ease: "easeOut",
+                        },
+                      }}
+                      exit={{ y: 20, opacity: 0 }}
+                    >
+                      <Link
+                        href="/login"
+                        className={cn(
+                          "transition-all duration-300 text-xs",
+                          scrolled
+                            ? "text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400"
+                            : "text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40",
+                        )}
+                      >
+                        Login
+                      </Link>
+                    </motion.div>
 
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{
-                    y: 0,
-                    opacity: 1,
-                    transition: {
-                      delay: 0.5,
-                      duration: 0.5,
-                      ease: "easeOut",
-                    },
-                  }}
-                  exit={{ y: 20, opacity: 0 }}
-                >
-                  <Button className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white py-6 text-base">
-                    Get CRESTVPN
-                  </Button>
-                </motion.div>
+                    <motion.div
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{
+                        y: 0,
+                        opacity: 1,
+                        transition: {
+                          delay: 0.5,
+                          duration: 0.5,
+                          ease: "easeOut",
+                        },
+                      }}
+                      exit={{ y: 20, opacity: 0 }}
+                    >
+                      <Button className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white py-6 text-base">
+                        Get CREST VPN
+                      </Button>
+                    </motion.div>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Eye, EyeOff, Mail, Lock } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, PowerCircle, PowerCircleIcon } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/app/contexts/auth-context"
 import { useRouter } from "next/navigation"
@@ -90,7 +90,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4 sm:px-6">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-800 via-purple-700 to-purple-600 z-0">
         {/* Animated background shapes */}
@@ -128,13 +128,13 @@ export default function LoginPage() {
         </svg>
       </div>
 
-      {/* Left side content */}
-      <div className="absolute left-10 top-1/2 transform -translate-y-1/2 max-w-md text-white z-10 hidden lg:block">
+      {/* Left side content - hidden on mobile, visible from md breakpoint */}
+      <div className="absolute left-6 md:left-10 top-1/2 transform -translate-y-1/2 max-w-xs md:max-w-sm lg:max-w-md text-white z-10 hidden md:block">
         <motion.h1
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-5xl font-bold mb-6 leading-tight"
+          className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6 leading-tight"
         >
           Log in to a safer internet world
         </motion.h1>
@@ -142,47 +142,35 @@ export default function LoginPage() {
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="text-xl text-purple-100 mb-8"
+          className="text-base md:text-lg lg:text-xl text-purple-100 mb-6 md:mb-8"
         >
           Download SecureVPN apps on all your devices, and stay secure on 6500+ servers from anywhere, anytime.
         </motion.p>
       </div>
+
+      {/* Mobile header - only visible on smaller screens */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="text-white text-center mb-6 z-10 md:hidden"
+      >
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Log in to a safer internet world</h1>
+        <p className="text-sm sm:text-base text-purple-100">Secure your connection, anywhere you go</p>
+      </motion.div>
 
       {/* Login card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4 md:mx-auto z-10 relative"
+        className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-md z-10 relative"
       >
-        <motion.div variants={logoVariants} initial="hidden" animate="visible" className="flex justify-center mb-8">
-          <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center">
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="text-white"
-            >
-              <path
-                d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path d="M12 16V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path
-                d="M12 8H12.01"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+        <motion.div variants={logoVariants} initial="hidden" animate="visible" className="flex justify-center mb-6 sm:mb-8">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-600 rounded-full flex items-center justify-center">
+            <PowerCircleIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
-          <div className="ml-2 text-2xl font-bold text-gray-900 self-center">CREST VPN</div>
+          <div className="ml-2 text-xl sm:text-2xl font-bold text-gray-900 self-center">CREST VPN</div>
         </motion.div>
 
         <motion.form
@@ -190,45 +178,45 @@ export default function LoginPage() {
           initial="hidden"
           animate="visible"
           onSubmit={handleSubmit}
-          className="space-y-6"
+          className="space-y-4 sm:space-y-6"
         >
           <motion.div variants={itemVariants}>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Mail className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
               <Input
                 type="email"
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="pl-12 py-6 h-14 text-base rounded-xl border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
+                className="pl-10 sm:pl-12 py-5 sm:py-6 h-12 sm:h-14 text-sm sm:text-base rounded-xl border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
               />
             </div>
           </motion.div>
 
           <motion.div variants={itemVariants}>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Lock className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
               <Input
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="pl-12 py-6 h-14 text-base rounded-xl border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 pr-12"
+                className="pl-10 sm:pl-12 py-5 sm:py-6 h-12 sm:h-14 text-sm sm:text-base rounded-xl border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 pr-10 sm:pr-12"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
               >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                {showPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
               </button>
             </div>
           </motion.div>
 
           <motion.div variants={itemVariants} className="text-right">
-            <Link href="/forgot-password" className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+            <Link href="/forgot-password" className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium">
               Forgot your password?
             </Link>
           </motion.div>
@@ -236,13 +224,13 @@ export default function LoginPage() {
           <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
             <Button
               type="submit"
-              className="w-full bg-green-500 hover:bg-green-600 text-white py-6 h-14 rounded-xl text-base font-medium shadow-lg transition-all duration-300"
+              className="w-full bg-green-500 hover:bg-green-600 text-white py-5 sm:py-6 h-12 sm:h-14 rounded-xl text-sm sm:text-base font-medium shadow-lg transition-all duration-300"
               disabled={loading}
             >
               {loading ? (
                 <div className="flex items-center justify-center">
                   <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 sm:h-5 sm:w-5 text-white"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -269,18 +257,18 @@ export default function LoginPage() {
             </Button>
           </motion.div>
 
-          <motion.div variants={itemVariants} className="relative flex items-center justify-center my-6">
+          <motion.div variants={itemVariants} className="relative flex items-center justify-center my-4 sm:my-6">
             <div className="border-t border-gray-200 absolute w-full"></div>
-            <div className="bg-white px-4 relative z-10 text-sm text-gray-500">OR</div>
+            <div className="bg-white px-4 relative z-10 text-xs sm:text-sm text-gray-500">OR</div>
           </motion.div>
 
           <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
               type="button"
               variant="outline"
-              className="w-full border-gray-300 text-gray-900 py-6 h-14 rounded-xl text-base flex items-center justify-center transition-all duration-300 hover:border-gray-400"
+              className="w-full border-gray-300 text-gray-900 py-5 sm:py-6 h-12 sm:h-14 rounded-xl text-sm sm:text-base flex items-center justify-center transition-all duration-300 hover:border-gray-400"
             >
-              <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg className="h-4 w-4 sm:h-5 sm:w-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
                   d="M17.5 12.5C17.5 8.91 14.59 6 11 6C7.41 6 4.5 8.91 4.5 12.5C4.5 16.09 7.41 19 11 19C14.59 19 17.5 16.09 17.5 12.5Z"
                   stroke="black"
@@ -307,8 +295,8 @@ export default function LoginPage() {
             </Button>
           </motion.div>
 
-          <motion.div variants={itemVariants} className="text-center mt-8">
-            <p className="text-gray-600">
+          <motion.div variants={itemVariants} className="text-center mt-6 sm:mt-8">
+            <p className="text-gray-600 text-xs sm:text-sm">
               Don't have an account yet?{" "}
               <Link href="/signup" className="text-blue-600 hover:text-blue-800 font-medium">
                 Sign up
@@ -318,7 +306,7 @@ export default function LoginPage() {
         </motion.form>
       </motion.div>
 
-      {/* Floating elements */}
+      {/* Floating elements - hidden on small screens */}
       <motion.div
         className="absolute top-20 right-20 z-0 hidden lg:block"
         initial={{ opacity: 0, y: -20 }}

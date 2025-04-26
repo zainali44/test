@@ -1,23 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 // Access token API endpoint
 export async function POST(request: Request) {
   try {
+    // Get request body
     const body = await request.json();
-    const { merchantId, securedKey, basketId, transAmount, currencyCode } = body;
-
-    // Validate the required fields
-    if (!merchantId || !securedKey || !basketId || !transAmount || !currencyCode) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    const tokenApiUrl = 'https://ipg1.apps.net.pk/Ecommerce/api/Transaction/GetAccessToken';
-    const urlPostParams = `MERCHANT_ID=${merchantId}&SECURED_KEY=${securedKey}&BASKET_ID=${basketId}&TXNAMT=${transAmount}&CURRENCY_CODE=${currencyCode}`;
     
-    const response = await fetch(tokenApiUrl, {
+    // Create form data params exactly like the PHP implementation
+    const urlPostParams = `MERCHANT_ID=${body.MERCHANT_ID}&SECURED_KEY=${body.SECURED_KEY}&BASKET_ID=${body.BASKET_ID}&TXNAMT=${body.TXNAMT}&CURRENCY_CODE=${body.CURRENCY_CODE}`;
+    
+    console.log('Sending token request with params:', urlPostParams);
+
+    // Forward request to PayFast API with exact same format as PHP
+    const response = await fetch('https://ipg1.apps.net.pk/Ecommerce/api/Transaction/GetAccessToken', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -26,23 +21,34 @@ export async function POST(request: Request) {
       body: urlPostParams
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to get access token from payment gateway');
+    // Get response text first for debugging
+    const responseText = await response.text();
+    console.log('PayFast API response:', responseText);
+    
+    // Parse response as JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse response as JSON:', e);
+      return NextResponse.json({
+        error: 'Invalid response from PayFast API',
+        rawResponse: responseText
+      }, { status: 500 });
     }
 
-    const data = await response.json();
-
-    console.log(data.GENERATED_DATE_TIME);
+    console.log('Parsed token response:', data);
     
-    return NextResponse.json({
-      accessToken: data.ACCESS_TOKEN || '',
-      status: 'success'
-    });
-  } catch (error) {
-    console.error('Error in access token API route:', error);
+    // Return access token
     return NextResponse.json({ 
-      error: 'Failed to get access token',
-      status: 'error' 
-    }, { status: 500 });
+      accessToken: data.ACCESS_TOKEN,
+      fullResponse: data
+    });
+  } catch (error: any) {
+    console.error('Error in access token API route:', error);
+    return NextResponse.json(
+      { error: 'Failed to get access token', details: error.message },
+      { status: 500 }
+    );
   }
 } 

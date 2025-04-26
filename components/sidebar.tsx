@@ -23,11 +23,11 @@ export function Sidebar({ className }: SidebarProps) {
       href: "/dashboard/downloads",
       icon: Download,
     },
-    {
-      title: "Manual Configuration",
-      href: "/dashboard/manual-configuration",
-      icon: Globe,
-    },
+    // {
+    //   title: "Manual Configuration",
+    //   href: "/dashboard/manual-configuration",
+    //   icon: Globe,
+    // },
     {
       title: "Subscriptions",
       href: "/dashboard/subscriptions",
@@ -43,11 +43,11 @@ export function Sidebar({ className }: SidebarProps) {
       href: "/dashboard/profile",
       icon: User,
     },
-    {
-      title: "Settings",
-      href: "/dashboard/settings",
-      icon: Settings,
-    },
+    // {
+    //   title: "Settings",
+    //   href: "/dashboard/settings",
+    //   icon: Settings,
+    // },
   ]
 
   return (

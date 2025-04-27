@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
 
     try {
       // Call external registration API
-      console.log("Attempting to call external API at: http://localhost:8000/api/users");
-      const response = await fetch(`${process.env.NEXTAPI_URL}/users`, {
+      console.log("Attempting to call external API at: ", process.env.NEXTAPI_URL);
+      const response = await fetch(`${process.env.NEXTAPI_URL}users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

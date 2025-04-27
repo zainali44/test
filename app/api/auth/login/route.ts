@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { ApiResponse, User } from "@/app/utils/auth"
+import { ApiResponse, User, Subscription } from "@/app/utils/auth"
 import { jwtDecode } from "jwt-decode"
 import { cookies } from "next/headers"
 
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     console.log(process.env.NEXTAPI_URL)
 
     // Call external login API
-    const response = await fetch(`${process.env.NEXTAPI_URL}/users/login`, {
+    const response = await fetch(`${process.env.NEXTAPI_URL}users/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log(data)
+
     // API returns a token directly
     const token = data.token;
 
@@ -117,6 +119,31 @@ export async function POST(request: NextRequest) {
       }
     } catch (decodeError) {
       console.error("Error decoding token, using fallback user data:", decodeError);
+    }
+
+    // Include subscriptions from login response if available
+    if (data.subscriptions) {
+      userData.subscriptions = data.subscriptions as Subscription[];
+    } else {
+      // If no subscriptions data, add a default Free plan subscription
+      userData.subscriptions = [{
+        subscription_id: 1,
+        user_id: parseInt(userData.id),
+        plan_id: 1,
+        status: 'active',
+        start_date: new Date().toISOString(),
+        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+        next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date().toISOString(),
+        plan: {
+          plan_id: 1,
+          name: 'Free',
+          description: 'A free plan',
+          price: '0.00',
+          billing_cycle: '0',
+          created_at: new Date().toISOString()
+        }
+      }];
     }
 
     // Set auth cookie

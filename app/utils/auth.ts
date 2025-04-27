@@ -8,10 +8,32 @@ export interface JWTPayload {
   exp: number
 }
 
+export interface Plan {
+  plan_id: number
+  name: string
+  description: string
+  price: string
+  billing_cycle: string
+  created_at: string
+}
+
+export interface Subscription {
+  subscription_id: number
+  user_id: number
+  plan_id: number
+  status: string
+  start_date: string
+  end_date: string
+  next_billing_date: string
+  created_at: string
+  plan?: Plan
+}
+
 export interface User {
   id: string
   email: string
   name?: string
+  subscriptions?: Subscription[]
 }
 
 // Client-side functions to store and retrieve user data
@@ -83,4 +105,4 @@ export interface ApiResponse<T = any> {
   status: "success" | "error"
   data?: T
   message?: string
-} 
+}

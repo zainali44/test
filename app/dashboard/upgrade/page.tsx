@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import {
     Check,
     Clock,
@@ -15,14 +16,63 @@ import {
     Info,
     Shield,
     DollarSign,
+    ArrowUpRight,
+    Star,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { useAuth } from "@/app/contexts/auth-context"
+import { Card } from "@/components/ui/card"
 
 export default function UpgradePage() {
+    const { user } = useAuth()
+    const router = useRouter()
     const [selectedPlan, setSelectedPlan] = useState<"individual" | "basic" | "premium">("premium")
     const [selectedDuration, setSelectedDuration] = useState<"yearly" | "monthly">("yearly")
+
+    // Check if user has a free plan
+    const isFreePlan = () => {
+        if (!user || !user.subscriptions || !Array.isArray(user.subscriptions) || user.subscriptions.length === 0) {
+            return true
+        }
+        
+        const activeSubscription = user.subscriptions.find(sub => sub.status === 'active')
+        return !activeSubscription || activeSubscription.plan?.name === 'Free'
+    }
+
+    // Get current plan from user subscription data
+    const getCurrentPlan = () => {
+        if (!user || !user.subscriptions || !Array.isArray(user.subscriptions) || user.subscriptions.length === 0) {
+            return { name: 'Free', type: null }
+        }
+        
+        const activeSubscription = user.subscriptions.find(sub => sub.status === 'active')
+        if (!activeSubscription) {
+            return { name: 'Free', type: null }
+        }
+        
+        const planName = activeSubscription.plan?.name || 'Free'
+        
+        // Map the plan name to our plan types
+        if (planName.toLowerCase().includes('premium')) {
+            return { name: planName, type: 'premium' }
+        } else if (planName.toLowerCase().includes('basic')) {
+            return { name: planName, type: 'basic' }
+        } else if (planName.toLowerCase() !== 'free') {
+            return { name: planName, type: 'individual' }
+        }
+        
+        return { name: planName, type: null }
+    }
+
+    // Set the selected plan based on user subscription when component mounts
+    useEffect(() => {
+        const { type } = getCurrentPlan()
+        if (type) {
+            setSelectedPlan(type as "individual" | "basic" | "premium")
+        }
+    }, [user])
 
     // Plan prices
     const prices = {
@@ -110,6 +160,32 @@ export default function UpgradePage() {
         return today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     }
 
+    // Get current plan information
+    const currentPlan = getCurrentPlan()
+    const currentPlanDisplay = currentPlan.name || 'Free Plan'
+
+    // Handle payment redirect
+    const handlePaymentRedirect = () => {
+        // Get the plan amount based on selection
+        const amount = selectedDuration === "yearly" 
+            ? calculateTotalPrice(selectedPlan, "yearly") 
+            : prices.monthly[selectedPlan];
+        
+        // Get plan name for transaction description
+        const planName = plans[selectedPlan].name;
+        
+        // Create query parameters for payment page
+        const queryParams = new URLSearchParams({
+            plan: selectedPlan,
+            duration: selectedDuration,
+            amount: amount.toString(),
+            description: `${planName} Plan - ${selectedDuration === "yearly" ? "Annual" : "Monthly"} Subscription`
+        }).toString();
+        
+        // Navigate to payment page with query parameters
+        router.push(`/payment?${queryParams}`);
+    };
+
     return (
         <div className="max-w-[1000px] mx-auto px-4 py-6">
             {/* Header */}
@@ -130,6 +206,68 @@ export default function UpgradePage() {
                 <p className="text-gray-500 text-xs mt-1">Upgrade your plan to get more features and longer protection.</p>
             </div>
 
+            {/* Subscription Status Message */}
+            <Card className="p-6 mb-8 border">
+                {isFreePlan() ? (
+                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                            <Star className="h-6 w-6 text-amber-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-medium text-gray-900 mb-1">You're currently on the Free Plan</h3>
+                            <p className="text-gray-600 mb-3">
+                                Upgrade now to unlock premium features including multiple device connections, 
+                                faster servers, and advanced security features.
+                            </p>
+                            <div className="space-y-2">
+                                <div className="flex items-start">
+                                    <Check className="h-4 w-4 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
+                                    <span className="text-sm text-gray-700">Download apps for all platforms</span>
+                                </div>
+                                <div className="flex items-start">
+                                    <Check className="h-4 w-4 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
+                                    <span className="text-sm text-gray-700">Up to 5 simultaneous device connections</span>
+                                </div>
+                                <div className="flex items-start">
+                                    <Check className="h-4 w-4 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
+                                    <span className="text-sm text-gray-700">Premium servers with faster speeds</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                        <div className={`h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            currentPlan.type === 'premium' 
+                                ? 'bg-gradient-to-r from-purple-100 to-indigo-100' 
+                                : 'bg-gradient-to-r from-emerald-100 to-teal-100'
+                        }`}>
+                            <Shield className={`h-6 w-6 ${
+                                currentPlan.type === 'premium' 
+                                    ? 'text-indigo-600' 
+                                    : 'text-emerald-600'
+                            }`} />
+                        </div>
+                        <div className="flex-grow">
+                            <h3 className="text-lg font-medium text-gray-900 mb-1">Your current plan: {currentPlanDisplay}</h3>
+                            <p className="text-gray-600 mb-3">
+                                You already have access to premium features. You can upgrade or change your plan below.
+                            </p>
+                            <div className="flex items-center">
+                                <Badge className={`mr-3 ${
+                                    currentPlan.type === 'premium' 
+                                        ? 'bg-indigo-100 text-indigo-800' 
+                                        : 'bg-emerald-100 text-emerald-800'
+                                }`}>
+                                    ACTIVE
+                                </Badge>
+                                <span className="text-sm text-gray-500">Your plan selection is highlighted below</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Card>
+
             {/* Current Plan Info */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 <div className="bg-white rounded-md border border-gray-200 p-4 shadow-sm">
@@ -144,7 +282,7 @@ export default function UpgradePage() {
                     <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Current Plan Type</div>
                     <div className="flex items-center">
                         <Package className="h-3.5 w-3.5 text-emerald-600 mr-1.5" />
-                        <span className="text-sm font-medium">Individual</span>
+                        <span className="text-sm font-medium">{currentPlanDisplay}</span>
                     </div>
                 </div>
 
@@ -157,16 +295,18 @@ export default function UpgradePage() {
                 </div>
             </div>
 
-            {/* Upgrade Offer */}
-            <div className="mb-10">
-                <div className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-center py-2 px-4 rounded-t-lg text-sm font-medium">
-                    Special Upgrade Offer!
+            {/* Upgrade Offer - Only show for free plans */}
+            {isFreePlan() && (
+                <div className="mb-10">
+                    <div className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-center py-2 px-4 rounded-t-lg text-sm font-medium">
+                        Special Upgrade Offer!
+                    </div>
+                    <div className="bg-white border-x border-b border-gray-200 rounded-b-sm p-6 text-center shadow-sm">
+                        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Save up to PKR 2,400 with yearly plans</h2>
+                        <p className="text-gray-600 text-sm">**Choose a yearly plan for the best value**</p>
+                    </div>
                 </div>
-                <div className="bg-white border-x border-b border-gray-200 rounded-b-sm p-6 text-center shadow-sm">
-                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Save up to PKR 2,400 with yearly plans</h2>
-                    <p className="text-gray-600 text-sm">**Choose a yearly plan for the best value**</p>
-                </div>
-            </div>
+            )}
             
             {/* Plan Duration Selection */}
             <div className="flex justify-center mb-8">
@@ -250,7 +390,8 @@ export default function UpgradePage() {
                             }`}
                             onClick={() => setSelectedPlan("individual")}
                         >
-                            {selectedPlan === "individual" ? "Selected" : "Select Plan"}
+                            {selectedPlan === "individual" && currentPlan.type === "individual" ? "Current Plan" : 
+                             selectedPlan === "individual" ? "Selected" : "Select Plan"}
                         </Button>
 
                         <div className="text-xs text-gray-500 mt-3 text-center">
@@ -320,7 +461,8 @@ export default function UpgradePage() {
                             }`}
                             onClick={() => setSelectedPlan("basic")}
                         >
-                            {selectedPlan === "basic" ? "Selected" : "Select Plan"}
+                            {selectedPlan === "basic" && currentPlan.type === "basic" ? "Current Plan" : 
+                             selectedPlan === "basic" ? "Selected" : "Select Plan"}
                         </Button>
 
                         <div className="text-xs text-gray-500 mt-3 text-center">
@@ -393,7 +535,8 @@ export default function UpgradePage() {
                             }`}
                             onClick={() => setSelectedPlan("premium")}
                         >
-                            {selectedPlan === "premium" ? "Selected" : "Select Plan"}
+                            {selectedPlan === "premium" && currentPlan.type === "premium" ? "Current Plan" : 
+                             selectedPlan === "premium" ? "Selected" : "Select Plan"}
                         </Button>
 
                         <div className="text-xs text-gray-500 mt-3 text-center">
@@ -419,8 +562,11 @@ export default function UpgradePage() {
                     </div>
                 </div>
                 
-                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6">
-                    Proceed to Payment
+                <Button 
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6"
+                    onClick={handlePaymentRedirect}
+                >
+                    {currentPlan.type === selectedPlan ? "Update Payment Method" : "Proceed to Payment"}
                 </Button>
                 
                 <p className="text-xs text-gray-500 mt-3 text-center">

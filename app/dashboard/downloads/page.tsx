@@ -1,4 +1,5 @@
 "use client"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -6,12 +7,36 @@ import { Download, Info, Shield, Check, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Card } from "@/components/ui/card"
+import { useAuth } from "@/app/contexts/auth-context"
+import { UpgradeDialog } from "@/components/upgrade-dialog"
 
 export default function DownloadsPage() {
+  const { user } = useAuth()
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
+  const [selectedDownload, setSelectedDownload] = useState("")
+
+  // Check if user has a free plan
+  const isFreePlan = () => {
+    if (!user || !user.subscriptions || !Array.isArray(user.subscriptions) || user.subscriptions.length === 0) {
+      return true
+    }
+    
+    const activeSubscription = user.subscriptions.find(sub => sub.status === 'active')
+    return !activeSubscription || activeSubscription.plan?.name === 'Free'
+  }
+
   const handleDownload = (platform: string) => {
-    // In a real app, this would trigger the actual download
+    // Check if user has a free plan
+    if (isFreePlan()) {
+      setSelectedDownload(platform)
+      setShowUpgradeDialog(true)
+      return
+    }
+    
+    // For paid plans, proceed with download
     console.log(`Downloading for ${platform}`)
     // You could also track downloads with analytics here
+    // Here you'd implement the actual download logic
   }
 
   return (
@@ -58,7 +83,7 @@ export default function DownloadsPage() {
 
             <div className="flex flex-wrap gap-3">
               <Button
-                onClick={() => handleDownload("windows")}
+                onClick={() => handleDownload("Windows")}
                 className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-full text-white"
               >
                 <Download className="mr-2 h-4 w-4" />
@@ -100,7 +125,7 @@ export default function DownloadsPage() {
           image="https://storage.googleapis.com/gweb-uniblog-publish-prod/images/Android_robot.max-500x500.png"
           requirements="Android 6.0 or later"
           version="v8.5.0"
-          onDownload={() => handleDownload("android")}
+          onDownload={() => handleDownload("Android")}
           setupGuides={[
             { title: "Installation Guide", url: "#" },
             { title: "Troubleshooting", url: "#" },
@@ -117,7 +142,7 @@ export default function DownloadsPage() {
           image="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1667px-Apple_logo_black.svg.png"
           requirements="iOS 13.0 or later"
           version="v4.2.1 Beta"
-          onDownload={() => handleDownload("ios")}
+          onDownload={() => handleDownload("iOS")}
           setupGuides={[
             { title: "Join Beta Program", url: "#" },
             { title: "Early Access", url: "#" },
@@ -156,7 +181,7 @@ export default function DownloadsPage() {
             </p>
             <div>
               <Button
-                onClick={() => handleDownload("openvpn-config")}
+                onClick={() => handleDownload("OpenVPN Config")}
                 variant="outline"
                 className="border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
               >
@@ -192,6 +217,13 @@ export default function DownloadsPage() {
           </div>
         </div>
       </div>
+
+      {/* Upgrade Dialog */}
+      <UpgradeDialog 
+        isOpen={showUpgradeDialog} 
+        onClose={() => setShowUpgradeDialog(false)}
+        downloadType={selectedDownload}
+      />
     </div>
   )
 }
@@ -248,7 +280,6 @@ function DownloadCard({
                   }
                   variant={i === 0 ? "default" : "outline"}
                 >
-                  <Download className="mr-2 h-4 w-4" />
                   {variant.name}
                 </Button>
               ))}
@@ -265,43 +296,36 @@ function DownloadCard({
 
           {storeLink && (
             <Button
-              variant="outline"
-              className="w-full border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
               asChild
+              variant="outline"
+              className="w-full"
             >
-              <Link href={storeLink.url} target="_blank">
+              <Link href={storeLink.url}>
                 <ExternalLink className="mr-2 h-4 w-4" />
                 {storeLink.text}
               </Link>
             </Button>
           )}
+
+          {setupGuides && setupGuides.length > 0 && (
+            <div className="pt-2">
+              <p className="text-xs text-gray-500 mb-1.5">Setup guides:</p>
+              <div className="flex flex-wrap gap-2">
+                {setupGuides.map((guide, i) => (
+                  <Link
+                    key={i}
+                    href={guide.url}
+                    className="text-xs text-emerald-600 hover:text-emerald-700 hover:underline"
+                  >
+                    {guide.title}
+                    {i < setupGuides.length - 1 && <span className="ml-2 text-gray-300">•</span>}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      {setupGuides && setupGuides.length > 0 && (
-        <>
-          <Separator />
-          <div className="p-4 bg-gray-50">
-            <h4 className="text-sm font-medium mb-2 flex items-center">
-              <Info className="h-4 w-4 mr-1.5 text-emerald-600" />
-              Setup Guides
-            </h4>
-            <ul className="space-y-1.5">
-              {setupGuides.map((guide, i) => (
-                <li key={i}>
-                  <Link
-                    href={guide.url}
-                    className="text-sm text-muted-foreground hover:text-emerald-600 flex items-center"
-                  >
-                    <Check className="h-3.5 w-3.5 mr-1.5 opacity-70" />
-                    {guide.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </>
-      )}
     </div>
   )
 }

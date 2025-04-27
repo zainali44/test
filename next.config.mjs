@@ -8,7 +8,7 @@ const nextConfig = {
             'storage.googleapis.com','upload.wikimedia.org','cdn.pixabay.com','cdn-icons-png.flaticon.com']
     },
     env: {
-        NEXTAPI_URL: 'https://a551-154-192-2-32.ngrok-free.app',
+        NEXTAPI_URL: 'https://ellista.habajumla.com/',
     },
 };
 

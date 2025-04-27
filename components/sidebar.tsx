@@ -7,6 +7,8 @@ import { BarChart3, Download, Globe, Home, Lock, Menu, Server, Settings, Shield,
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/hooks/use-sidebar"
+import { useAuth } from "@/app/contexts/auth-context"
+import { format } from "date-fns"
 
 interface SidebarProps {
   className?: string
@@ -16,6 +18,31 @@ export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
   const { isOpen, toggleSidebar, closeSidebar } = useSidebar()
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+  const { user } = useAuth()
+
+  // Extract subscription data from user context
+  const getSubscriptionInfo = () => {
+    // If user data includes subscription information
+    if (user && 'subscriptions' && Array.isArray(user.subscriptions) && user.subscriptions.length > 0) {
+      const activeSubscription = user.subscriptions.find(sub => sub.status === 'active')
+      
+      if (activeSubscription) {
+        return {
+          planName: activeSubscription.plan?.name || 'Unknown Plan',
+          endDate: activeSubscription.end_date ? new Date(activeSubscription.end_date) : null
+        }
+      }
+    }
+    
+    // Default to Free plan if no subscription data is found
+    return {
+      planName: 'Free Plan',
+      endDate: null
+    }
+  }
+
+  const { planName, endDate } = getSubscriptionInfo()
+  const isPremiumPlan = planName !== 'Free' && planName !== 'Free Plan'
 
   const navItems = [
     {
@@ -109,20 +136,33 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="mt-8 px-4">
           <div className="rounded-sm border border-gray-100 bg-gray-50 p-3">
             <div className="flex items-center">
-              <div className="h-8 w-8 rounded-sm bg-gradient-to-r from-amber-500 to-amber-600 flex items-center justify-center">
+              <div className={`h-8 w-8 rounded-sm flex items-center justify-center ${
+                isPremiumPlan 
+                  ? "bg-gradient-to-r from-amber-500 to-amber-600" 
+                  : "bg-gradient-to-r from-gray-400 to-gray-500"
+              }`}>
                 <Shield className="h-4 w-4 text-white" />
               </div>
               <div className="ml-3">
-                <h3 className="text-xs font-medium text-gray-900">Premium Plan</h3>
-                <p className="text-[10px] text-gray-600">Valid until: Apr 2024</p>
+                <h3 className="text-xs font-medium text-gray-900">{planName}</h3>
+                {endDate ? (
+                  <p className="text-[10px] text-gray-600">Valid until: {format(endDate, 'MMM yyyy')}</p>
+                ) : (
+                  <p className="text-[10px] text-gray-600">Limited features</p>
+                )}
               </div>
             </div>
             <div className="mt-3">
               <Button
                 size="sm"
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white text-[10px] h-7 rounded-sm"
+                className={`w-full ${
+                  isPremiumPlan 
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600"
+                    : "bg-gradient-to-r from-gray-600 to-gray-500 hover:from-gray-700 hover:to-gray-600"
+                } text-white text-[10px] h-7 rounded-sm`}
+                onClick={() => window.location.href = '/dashboard/upgrade'}
               >
-                Manage Subscription
+                {isPremiumPlan ? "Manage Subscription" : "Upgrade Now"}
               </Button>
             </div>
           </div>

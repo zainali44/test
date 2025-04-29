@@ -423,34 +423,36 @@ export default function UpgradePage() {
     };
 
     return (
-        <div className="max-w-[1000px] mx-auto px-4 py-6">
+        <div className="w-full max-w-[1000px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
             {/* Header */}
-            <div className="mb-8">
-                <div className="flex items-center justify-between">
+            <div className="mb-6 sm:mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <h1 className="text-xl font-medium text-gray-900">Upgrade Plan</h1>
-                    <div className="flex items-center">
-                        <Link href="/dashboard/billing-history">
-                            <Button variant="ghost" size="sm" className="text-xs h-8 px-3 rounded-sm text-gray-600 hover:bg-gray-100">
+                    <div className="flex items-center gap-2">
+                        <Link href="/dashboard/billing-history" className="flex-1 sm:flex-auto">
+                            <Button variant="ghost" size="sm" className="w-full sm:w-auto text-xs h-8 px-3 rounded-sm text-gray-600 hover:bg-gray-100">
                                 <Clock className="h-3.5 w-3.5 mr-1.5" />
                                 Billing History
                             </Button>
                         </Link>
-                        <PaymentMethodsSheet />
+                        <div className="flex-1 sm:flex-auto">
+                            <PaymentMethodsSheet />
+                        </div>
                     </div>
                 </div>
-                <p className="text-gray-500 text-xs mt-1">Upgrade your plan to get more features and longer protection.</p>
+                <p className="text-gray-500 text-xs mt-2">Upgrade your plan to get more features and longer protection.</p>
             </div>
 
             {/* Subscription Status Message */}
-            <Card className="p-6 mb-8 bg-gray-50 border-0">
+            <Card className="p-4 sm:p-6 mb-6 sm:mb-8 bg-gray-50 border-0 rounded-lg">
                 {isFreePlan() ? (
                     <div className="flex flex-col md:flex-row md:items-center gap-4">
                         <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
                             <Star className="h-6 w-6 text-amber-600" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-1">You're currently on the Free Plan</h3>
-                            <p className="text-gray-600 mb-3">
+                            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1">You're currently on the Free Plan</h3>
+                            <p className="text-sm text-gray-600 mb-3">
                                 Upgrade now to unlock premium features including multiple device connections, 
                                 faster servers, and advanced security features.
                             </p>
@@ -484,8 +486,8 @@ export default function UpgradePage() {
                             }`} />
                         </div>
                         <div className="flex-grow">
-                            <h3 className="text-lg font-medium text-gray-900 mb-1">Your current plan: {currentPlanDisplay}</h3>
-                            <p className="text-gray-600 mb-3">
+                            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1">Your current plan: {currentPlanDisplay}</h3>
+                            <p className="text-sm text-gray-600 mb-3">
                                 You already have access to premium features. You can upgrade or change your plan below.
                             </p>
                             <div className="flex items-center">
@@ -507,8 +509,8 @@ export default function UpgradePage() {
             </Card>
 
             {/* Current Plan Info */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-white rounded-md border border-gray-200 p-4 shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 sm:mb-8">
+                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
                     <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Current Billing Cycle</div>
                     <div className="flex items-center">
                         <Calendar className="h-3.5 w-3.5 text-emerald-600 mr-1.5" />
@@ -518,7 +520,7 @@ export default function UpgradePage() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-md border border-gray-200 p-4 shadow-sm">
+                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
                     <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Current Plan Type</div>
                     <div className="flex items-center">
                         <Package className="h-3.5 w-3.5 text-emerald-600 mr-1.5" />
@@ -526,7 +528,7 @@ export default function UpgradePage() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-md border border-gray-200 p-4 shadow-sm">
+                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
                     <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Connected Add-ons</div>
                     <div className="flex items-center">
                         <Zap className="h-3.5 w-3.5 text-emerald-600 mr-1.5" />
@@ -537,25 +539,25 @@ export default function UpgradePage() {
 
             {/* Upgrade Offer - Only show for free plans */}
             {isFreePlan() && (
-                <div className="mb-10">
+                <div className="mb-8">
                     <div className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-center py-2 px-4 rounded-t-lg text-sm font-medium">
                         Special Upgrade Offer!
                     </div>
-                    <div className="bg-white border-x border-b border-gray-200 rounded-b-sm p-6 text-center shadow-sm">
-                        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Save up to PKR 2,400 with yearly plans</h2>
+                    <div className="bg-white border-x border-b border-gray-200 rounded-b-sm p-4 sm:p-6 text-center shadow-sm">
+                        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">Save up to PKR 2,400 with yearly plans</h2>
                         <p className="text-gray-600 text-sm">**Choose a yearly plan for the best value**</p>
                     </div>
                 </div>
             )}
             
             {/* Plan Duration Selection */}
-            <div className="flex justify-center mb-8">
-                <div className="inline-flex bg-gray-100 rounded-full p-1.5">
+            <div className="flex justify-center mb-6 sm:mb-8">
+                <div className="inline-flex bg-gray-100 rounded-full p-1.5 w-full sm:w-auto justify-between">
                     {["monthly", "yearly"].map((duration) => (
                         <button
                             key={duration}
                             onClick={() => setSelectedDuration(duration as "yearly" | "monthly")}
-                            className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
+                            className={`py-2 rounded-full text-xs font-medium transition-all duration-300 w-[48%] sm:w-auto sm:px-4 ${
                                 selectedDuration === duration ? "bg-white shadow-md text-gray-900" : "text-gray-600"
                             }`}
                         >
@@ -567,17 +569,15 @@ export default function UpgradePage() {
                 </div>
             </div>
 
-            {/* Plan Selection */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                {/* Individual Plan */}
-                <div
-                    className={`border rounded-sm shadow-sm overflow-hidden transition-all duration-200 ${
-                        selectedPlan === "individual"
-                            ? "border-emerald-500 ring-1 ring-emerald-500"
-                            : "border-gray-200 hover:border-emerald-200"
-                    }`}
-                >
-                    <div className="bg-white p-5">
+            {/* Plan Selection - Stacked on mobile, side by side on desktop */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
+                {/* Individual Plan Card */}
+                <div className={`border rounded-lg shadow-sm overflow-hidden transition-all duration-200 ${
+                    selectedPlan === "individual"
+                        ? "border-emerald-500 ring-1 ring-emerald-500"
+                        : "border-gray-200 hover:border-emerald-200"
+                }`}>
+                    <div className="bg-white p-4 sm:p-5">
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 {selectedDuration === "yearly" && (
@@ -642,15 +642,13 @@ export default function UpgradePage() {
                     </div>
                 </div>
 
-                {/* Basic Plan */}
-                <div
-                    className={`border rounded-md shadow-sm overflow-hidden transition-all duration-200 ${
-                        selectedPlan === "basic"
-                            ? "border-emerald-500 ring-1 ring-emerald-500"
-                            : "border-gray-200 hover:border-emerald-200"
-                    }`}
-                >
-                    <div className="bg-white p-5">
+                {/* Basic Plan Card */}
+                <div className={`border rounded-lg shadow-sm overflow-hidden transition-all duration-200 ${
+                    selectedPlan === "basic"
+                        ? "border-emerald-500 ring-1 ring-emerald-500"
+                        : "border-gray-200 hover:border-emerald-200"
+                }`}>
+                    <div className="bg-white p-4 sm:p-5">
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 {selectedDuration === "yearly" && (
@@ -715,18 +713,16 @@ export default function UpgradePage() {
                     </div>
                 </div>
 
-                {/* Premium Plan */}
-                <div
-                    className={`border rounded-sm shadow-sm overflow-hidden transition-all duration-200 ${
-                        selectedPlan === "premium"
-                            ? "border-emerald-500 ring-1 ring-emerald-500"
-                            : "border-gray-200 hover:border-emerald-200"
-                    }`}
-                >
-                    <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white text-center py-1 text-xs font-medium">
+                {/* Premium Plan Card */}
+                <div className={`border rounded-lg shadow-sm overflow-hidden transition-all duration-200 ${
+                    selectedPlan === "premium"
+                        ? "border-emerald-500 ring-1 ring-emerald-500"
+                        : "border-gray-200 hover:border-emerald-200"
+                }`}>
+                    <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white text-center py-1.5 text-xs font-medium rounded-t-lg">
                         MOST POPULAR
                     </div>
-                    <div className="bg-white p-5">
+                    <div className="bg-white p-4 sm:p-5">
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 {selectedDuration === "yearly" && (
@@ -793,7 +789,7 @@ export default function UpgradePage() {
             </div>
 
             {/* Checkout Button */}
-            <div className="bg-gray-50 p-6 border border-gray-200 rounded-md shadow-sm">
+            <div className="bg-gray-50 p-4 sm:p-6 border border-gray-200 rounded-lg shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                     <div>
                         <p className="text-sm font-medium text-gray-900">Total Amount</p>
@@ -809,7 +805,7 @@ export default function UpgradePage() {
                 </div>
                 
                 <Button 
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 sm:py-6"
                     onClick={handlePaymentRedirect}
                     disabled={currentPlan.type === selectedPlan && isSameCycle}
                 >

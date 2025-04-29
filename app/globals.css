@@ -22,6 +22,12 @@ body {
     scrollbar-width: none;  /* Firefox */
   }
   
+  /* Extra small text for mobile devices */
+  .text-2xs {
+    font-size: 0.65rem;
+    line-height: 1rem;
+  }
+  
   /* Responsive padding utility classes */
   .responsive-p {
     @apply p-4 md:p-6 lg:p-8;

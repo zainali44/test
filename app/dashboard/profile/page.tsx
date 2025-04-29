@@ -308,11 +308,11 @@ export default function ProfilePage() {
   const subscriptionEndDate = getSubscriptionEndDate()
 
   return (
-    <div className="container p-0 mx-auto space-y-6">
+    <div className="container p-0 mx-auto space-y-4 sm:space-y-6">
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-4 md:p-6 space-y-4 md:space-y-6">
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-100 flex items-center justify-center">
+        <div className="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 md:space-y-6">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-5 md:gap-6">
+            <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-100 flex items-center justify-center">
               {user?.profilePicture ? (
                 <Image 
                   src={user.profilePicture} 
@@ -321,31 +321,31 @@ export default function ProfilePage() {
                   className="object-cover" 
                 />
               ) : (
-                <UserCircle className="w-12 h-12 md:w-14 md:h-14 text-emerald-300" />
+                <UserCircle className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-emerald-300" />
               )}
             </div>
             
             <div className="flex-1 text-center md:text-left">
               <div className="flex flex-col md:flex-row items-center md:items-start gap-2">
                 <div>
-                  <h1 className="text-xl md:text-2xl font-bold">
+                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold">
                     {user?.name || (user?.email ? user.email.split('@')[0] : 'User')}
                   </h1>
-                  <p className="text-sm text-gray-500 mt-1">{user?.email || 'No email available'}</p>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">{user?.email || 'No email available'}</p>
                 </div>
                 
-                <div className="flex items-center gap-2 mt-3 md:mt-0 md:ml-auto">
+                <div className="flex items-center gap-2 mt-2 sm:mt-3 md:mt-0 md:ml-auto">
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="text-xs h-8 rounded-md border-gray-200 hover:bg-gray-50"
+                    className="text-2xs sm:text-xs h-7 sm:h-8 rounded-md border-gray-200 hover:bg-gray-50"
                     onClick={() => setIsEditing('name')}
                   >
-                    <Edit2 className="mr-1 h-3 w-3" />
+                    <Edit2 className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     Edit Profile
                   </Button>
                   
-                  <Badge className={`py-1 px-3 rounded-full text-xs ${
+                  <Badge className={`py-0.5 sm:py-1 px-2 sm:px-3 rounded-full text-2xs sm:text-xs ${
                     planDetails.type === 'Premium' 
                       ? 'bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 hover:from-amber-200 hover:to-amber-300 border-0'
                       : planDetails.type === 'Basic'
@@ -358,18 +358,18 @@ export default function ProfilePage() {
               </div>
               
               {emailVerified ? (
-                <div className="flex items-center mt-2 text-emerald-600 text-xs">
-                  <Check className="h-3 w-3 mr-1" />
+                <div className="flex items-center justify-center md:justify-start mt-1 sm:mt-2 text-emerald-600 text-2xs sm:text-xs">
+                  <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
                   Email verified
                 </div>
               ) : (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mt-3 md:mt-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 h-7 rounded-md"
+                  className="mt-2 sm:mt-3 md:mt-2 text-2xs sm:text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 h-6 sm:h-7 rounded-md"
                   onClick={handleVerifyEmail}
                 >
-                  <AlertCircle className="h-3 w-3 mr-1" />
+                  <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
                   Verify Email
                 </Button>
               )}
@@ -377,17 +377,17 @@ export default function ProfilePage() {
           </div>
           
           {isEditing === 'name' && (
-            <div className="mt-4 p-4 rounded-lg bg-gray-50">
-              <div className="flex flex-col space-y-3">
+            <div className="mt-3 sm:mt-4 p-3 sm:p-4 rounded-lg bg-gray-50">
+              <div className="flex flex-col space-y-2 sm:space-y-3">
                 <div>
-                  <label htmlFor="name" className="text-sm font-medium text-gray-700 mb-1 block">
+                  <label htmlFor="name" className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">
                     Display Name
                   </label>
                   <Input 
                     id="name" 
                     defaultValue={user?.name || ''} 
                     placeholder="Enter your name"
-                    className="h-9"
+                    className="h-8 sm:h-9 text-xs sm:text-sm"
                   />
                 </div>
                 
@@ -395,14 +395,14 @@ export default function ProfilePage() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-8 text-xs"
+                    className="h-7 sm:h-8 text-2xs sm:text-xs"
                     onClick={() => setIsEditing(null)}
                   >
                     Cancel
                   </Button>
                   <Button 
                     size="sm" 
-                    className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700"
+                    className="h-7 sm:h-8 text-2xs sm:text-xs bg-emerald-600 hover:bg-emerald-700"
                   >
                     Save Changes
                   </Button>
@@ -412,31 +412,31 @@ export default function ProfilePage() {
           )}
         </div>
         
-        <div className="px-4 md:px-6 pb-4 md:pb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center mb-3">
-                <Mail className="h-4 w-4 text-gray-500 mr-2" />
-                <h3 className="text-sm font-medium">Email Address</h3>
+        <div className="px-3 sm:px-4 md:px-6 pb-3 sm:pb-4 md:pb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+              <div className="flex items-center mb-2 sm:mb-3">
+                <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-500 mr-1.5 sm:mr-2" />
+                <h3 className="text-xs sm:text-sm font-medium">Email Address</h3>
               </div>
-              <p className="text-sm break-all">{user?.email || 'Not available'}</p>
+              <p className="text-2xs sm:text-xs md:text-sm break-all">{user?.email || 'Not available'}</p>
             </div>
             
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center mb-3">
-                <Calendar className="h-4 w-4 text-gray-500 mr-2" />
-                <h3 className="text-sm font-medium">Member Since</h3>
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+              <div className="flex items-center mb-2 sm:mb-3">
+                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-500 mr-1.5 sm:mr-2" />
+                <h3 className="text-xs sm:text-sm font-medium">Member Since</h3>
               </div>
-              <p className="text-sm">{user?.created_at ? formatDate(user.created_at) : 'N/A'}</p>
+              <p className="text-2xs sm:text-xs md:text-sm">{user?.created_at ? formatDate(user.created_at) : 'N/A'}</p>
             </div>
             
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center mb-3">
-                <Zap className="h-4 w-4 text-gray-500 mr-2" />
-                <h3 className="text-sm font-medium">Account Status</h3>
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+              <div className="flex items-center mb-2 sm:mb-3">
+                <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-500 mr-1.5 sm:mr-2" />
+                <h3 className="text-xs sm:text-sm font-medium">Account Status</h3>
               </div>
               <div className="flex items-center">
-                <Badge className="rounded-full bg-emerald-100 text-emerald-700 border-0 text-xs">
+                <Badge className="rounded-full bg-emerald-100 text-emerald-700 border-0 text-2xs sm:text-xs py-0.5 px-2">
                   Active
                 </Badge>
               </div>
@@ -447,27 +447,27 @@ export default function ProfilePage() {
       
       {/* Subscription Section */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 border-b border-gray-100">
           <div className="flex items-center">
-            <CreditCard className="h-5 w-5 text-gray-500 mr-2" />
-            <h2 className="text-lg font-medium">Subscription</h2>
+            <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 mr-1.5 sm:mr-2" />
+            <h2 className="text-base sm:text-lg font-medium">Subscription</h2>
           </div>
           <Button 
             variant="outline" 
             size="sm" 
-            className="h-8 text-xs rounded-md border-emerald-100 text-emerald-700 hover:bg-emerald-50"
+            className="h-7 sm:h-8 text-2xs sm:text-xs rounded-md border-emerald-100 text-emerald-700 hover:bg-emerald-50"
             onClick={() => router.push('/dashboard/upgrade')}
           >
             Manage Plan
           </Button>
         </div>
         
-        <div className="p-4 md:p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium mb-2">Current Plan</h3>
+        <div className="p-3 sm:p-4 md:p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+              <h3 className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">Current Plan</h3>
               <div className="flex items-center">
-                <Badge className={`py-1 px-3 rounded-full text-xs ${
+                <Badge className={`py-0.5 px-2 sm:py-1 sm:px-3 rounded-full text-2xs sm:text-xs ${
                   planDetails.type === 'Premium' 
                     ? 'bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 border-0'
                     : planDetails.type === 'Basic'
@@ -479,49 +479,49 @@ export default function ProfilePage() {
               </div>
             </div>
             
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium mb-2">Next Billing Date</h3>
-              <p className="text-sm">{getSubscriptionEndDate()}</p>
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+              <h3 className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">Next Billing Date</h3>
+              <p className="text-2xs sm:text-xs md:text-sm">{getSubscriptionEndDate()}</p>
             </div>
             
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium mb-2">Payment Method</h3>
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+              <h3 className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">Payment Method</h3>
               {planDetails.type === 'Free' ? (
-                <p className="text-sm">No payment method</p>
+                <p className="text-2xs sm:text-xs md:text-sm">No payment method</p>
               ) : (
                 <div className="flex items-center">
-                  <span className="bg-gray-200 rounded p-1 mr-2">
-                    <CreditCard className="h-3 w-3 text-gray-700" />
+                  <span className="bg-gray-200 rounded p-0.5 sm:p-1 mr-1.5 sm:mr-2">
+                    <CreditCard className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-gray-700" />
                   </span>
-                  <span className="text-sm">••••</span>
+                  <span className="text-2xs sm:text-xs md:text-sm">••••</span>
                 </div>
               )}
             </div>
           </div>
           
           {transactions.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-sm font-medium mb-3">Recent Transactions</h3>
+            <div className="mt-4 sm:mt-6">
+              <h3 className="text-xs sm:text-sm font-medium mb-2 sm:mb-3">Recent Transactions</h3>
               <div className="rounded-lg border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-2xs sm:text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-2xs sm:text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-right text-2xs sm:text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {transactions.map((transaction, index) => (
                         <tr key={index}>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs">
+                          <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-2xs sm:text-xs">
                             {formatDate(transaction.created_at || transaction.date)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs">
+                          <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-2xs sm:text-xs">
                             {transaction.description || `Payment for ${planDetails.name}`}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-right">
+                          <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-2xs sm:text-xs text-right">
                             ${typeof transaction.amount === 'string' 
                               ? parseFloat(transaction.amount).toFixed(2) 
                               : transaction.amount.toFixed(2)}
@@ -537,11 +537,11 @@ export default function ProfilePage() {
                 <Button 
                   variant="link" 
                   size="sm" 
-                  className="text-xs h-8 px-0 text-emerald-600 hover:text-emerald-700"
+                  className="text-2xs sm:text-xs h-7 sm:h-8 px-0 text-emerald-600 hover:text-emerald-700"
                   onClick={() => router.push('/dashboard/billing-history')}
                 >
                   View All Transactions
-                  <ExternalLink className="ml-1 h-3 w-3" />
+                  <ExternalLink className="ml-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 </Button>
               </div>
             </div>
@@ -551,41 +551,41 @@ export default function ProfilePage() {
       
       {/* Account Security Section */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 border-b border-gray-100">
           <div className="flex items-center">
-            <Shield className="h-5 w-5 text-gray-500 mr-2" />
-            <h2 className="text-lg font-medium">Account Security</h2>
+            <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 mr-1.5 sm:mr-2" />
+            <h2 className="text-base sm:text-lg font-medium">Account Security</h2>
           </div>
         </div>
         
-        <div className="p-4 md:p-6">
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg bg-gray-50">
-              <div className="mb-3 sm:mb-0">
-                <h3 className="text-sm font-medium mb-1">Password</h3>
-                <p className="text-xs text-gray-500">Last changed: Never</p>
+        <div className="p-3 sm:p-4 md:p-6">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 rounded-lg bg-gray-50">
+              <div className="mb-2 sm:mb-0">
+                <h3 className="text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">Password</h3>
+                <p className="text-2xs sm:text-xs text-gray-500">Last changed: Never</p>
               </div>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="h-8 text-xs rounded-md"
+                className="h-7 sm:h-8 text-2xs sm:text-xs rounded-md"
                 onClick={() => setIsEditing('password')}
               >
                 Change Password
               </Button>
             </div>
             
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg bg-gray-50">
-              <div className="mb-3 sm:mb-0">
-                <h3 className="text-sm font-medium mb-1">Two-Factor Authentication</h3>
-                <p className="text-xs text-gray-500">Add an extra layer of security to your account</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 rounded-lg bg-gray-50">
+              <div className="mb-2 sm:mb-0">
+                <h3 className="text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">Two-Factor Authentication</h3>
+                <p className="text-2xs sm:text-xs text-gray-500">Add an extra layer of security to your account</p>
               </div>
               <Button 
                 variant="outline" 
                 size="sm"
-                className="h-8 text-xs rounded-md border-amber-100 text-amber-600 hover:bg-amber-50"
+                className="h-7 sm:h-8 text-2xs sm:text-xs rounded-md border-amber-100 text-amber-600 hover:bg-amber-50"
               >
-                <Lock className="mr-1.5 h-3 w-3" />
+                <Lock className="mr-1 sm:mr-1.5 h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 Set Up 2FA
               </Button>
             </div>

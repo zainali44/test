@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import {
   AlertCircle,
   Bell,
@@ -21,6 +21,8 @@ import {
   Sun,
   Trash2,
   Wifi,
+  SunMoon,
+  PieChart,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +39,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { toast } from "sonner"
 
 export default function SettingsPage() {
   // State for settings
@@ -54,6 +64,13 @@ export default function SettingsPage() {
   const [minimizeToTray, setMinimizeToTray] = useState(true)
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [showClearDataDialog, setShowClearDataDialog] = useState(false)
+  const [timezone, setTimezone] = useState("utc-8")
+  const [dateFormat, setDateFormat] = useState("mdy")
+  const [privacySettings, setPrivacySettings] = useState({
+    analytics: true,
+    cookieConsent: true,
+    dataSharing: false,
+  })
 
   // Handle reset settings
   const handleResetSettings = () => {
@@ -70,627 +87,289 @@ export default function SettingsPage() {
     setStartOnBoot(true)
     setMinimizeToTray(true)
     setShowResetDialog(false)
+    setTimezone("utc-8")
+    setDateFormat("mdy")
+    setPrivacySettings({
+      analytics: true,
+      cookieConsent: true,
+      dataSharing: false,
+    })
+  }
+
+  const handleSaveSettings = () => {
+    toast.success("Settings saved successfully!")
   }
 
   return (
-    <div className="max-w-[1000px] mx-auto px-4 py-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center">
-          <h1 className="text-base font-medium text-gray-900">Settings</h1>
-          <Badge variant="outline" className="ml-2 bg-gray-50 text-gray-600 border-0 text-[9px] px-1.5 py-0">
-            v2.4.1
-          </Badge>
+    <div className="container p-0 mx-auto space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 border-b border-gray-100">
+          <div className="flex items-center">
+            <SettingsIcon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 mr-1.5 sm:mr-2" />
+            <h2 className="text-base sm:text-lg font-medium">Settings</h2>
+          </div>
+          <Button 
+            variant="default"
+            size="sm" 
+            className="h-7 sm:h-8 text-2xs sm:text-xs rounded-md bg-emerald-600 hover:bg-emerald-700"
+            onClick={handleSaveSettings}
+          >
+            Save Changes
+          </Button>
         </div>
-        <p className="mt-1 text-gray-500 text-xs">
-          Configure your VPN client preferences, security options, and application behavior.
-        </p>
-      </div>
-
-      {/* Settings Tabs */}
-      <Tabs defaultValue="general" className="mb-8">
-        <TabsList className="mb-4">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="connection">Connection</TabsTrigger>
-          <TabsTrigger value="advanced">Advanced</TabsTrigger>
-        </TabsList>
-
-        {/* General Settings Tab */}
-        <TabsContent value="general">
-          <div className="space-y-6">
-            {/* Appearance Section */}
-            <div className="rounded-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center">
-                  <Monitor className="h-4 w-4 text-gray-500 mr-2" />
-                  <h2 className="text-sm font-medium text-gray-900">Appearance</h2>
+        
+        <div className="p-3 sm:p-4 md:p-6 space-y-5 sm:space-y-6">
+          {/* Appearance */}
+          <div>
+            <h3 className="text-sm sm:text-base font-medium mb-2 sm:mb-3 flex items-center">
+              <SunMoon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-600 mr-1.5 sm:mr-2" />
+              Appearance
+            </h3>
+            <div className="p-3 sm:p-4 rounded-lg bg-gray-50 space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-2 sm:mb-0">
+                  <div className="text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">Theme</div>
+                  <p className="text-2xs sm:text-xs text-gray-500">Choose how the dashboard looks to you</p>
                 </div>
-              </div>
-
-              <div className="p-4 space-y-4">
-                {/* Theme Setting */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      {theme === "light" && <Sun className="h-4 w-4 text-amber-500" />}
-                      {theme === "dark" && <Moon className="h-4 w-4 text-gray-700" />}
-                      {theme === "system" && <Monitor className="h-4 w-4 text-gray-700" />}
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Theme</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Choose your preferred appearance</div>
-                    </div>
-                  </div>
-                  <select
-                    value={theme}
-                    onChange={(e) => setTheme(e.target.value)}
-                    className="h-8 rounded-sm border-gray-200 text-xs focus:border-emerald-500 focus:ring-emerald-500"
-                  >
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                    <option value="system">System</option>
-                  </select>
-                </div>
-
-                {/* Language Setting */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Languages className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Language</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Select your preferred language</div>
-                    </div>
-                  </div>
-                  <select
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    className="h-8 rounded-sm border-gray-200 text-xs focus:border-emerald-500 focus:ring-emerald-500"
-                  >
-                    <option value="english">English</option>
-                    <option value="spanish">Spanish</option>
-                    <option value="french">French</option>
-                    <option value="german">German</option>
-                    <option value="japanese">Japanese</option>
-                    <option value="chinese">Chinese</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Application Behavior */}
-            <div className="rounded-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center">
-                  <SettingsIcon className="h-4 w-4 text-gray-500 mr-2" />
-                  <h2 className="text-sm font-medium text-gray-900">Application Behavior</h2>
-                </div>
-              </div>
-
-              <div className="p-4 space-y-4">
-                {/* Start on Boot */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Power className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Start on Boot</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Launch application when system starts</div>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={startOnBoot}
-                    onCheckedChange={setStartOnBoot}
-                    className="data-[state=checked]:bg-gradient-to-r from-emerald-600 to-teal-500"
-                  />
-                </div>
-
-                {/* Minimize to Tray */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Monitor className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Minimize to Tray</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Keep running in system tray when closed</div>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={minimizeToTray}
-                    onCheckedChange={setMinimizeToTray}
-                    className="data-[state=checked]:bg-gradient-to-r from-emerald-600 to-teal-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Notifications */}
-            <div className="rounded-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center">
-                  <Bell className="h-4 w-4 text-gray-500 mr-2" />
-                  <h2 className="text-sm font-medium text-gray-900">Notifications</h2>
-                </div>
-              </div>
-
-              <div className="p-4 space-y-4">
-                {/* Connection Notifications */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Bell className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Connection Notifications</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Show alerts for connection status changes</div>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={notifications}
-                    onCheckedChange={setNotifications}
-                    className="data-[state=checked]:bg-gradient-to-r from-emerald-600 to-teal-500"
-                  />
-                </div>
-
-                {/* Update Notifications */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <RefreshCw className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Update Notifications</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Notify when new versions are available</div>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={updates}
-                    onCheckedChange={setUpdates}
-                    className="data-[state=checked]:bg-gradient-to-r from-emerald-600 to-teal-500"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* Security Settings Tab */}
-        <TabsContent value="security">
-          <div className="space-y-6">
-            {/* VPN Security */}
-            <div className="rounded-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center">
-                  <Shield className="h-4 w-4 text-gray-500 mr-2" />
-                  <h2 className="text-sm font-medium text-gray-900">VPN Security</h2>
-                </div>
-              </div>
-
-              <div className="p-4 space-y-4">
-                {/* Kill Switch */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Power className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-gray-900">Kill Switch</span>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button className="ml-1 text-gray-400 hover:text-gray-600">
-                                <Info className="h-3 w-3" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent className="text-[10px] p-2 max-w-[200px]">
-                              <p>
-                                Blocks all internet traffic if the VPN connection drops unexpectedly, preventing data
-                                leaks.
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5">Block internet if VPN disconnects</div>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={killSwitch}
-                    onCheckedChange={setKillSwitch}
-                    className="data-[state=checked]:bg-gradient-to-r from-emerald-600 to-teal-500"
-                  />
-                </div>
-
-                {/* DNS Leak Protection */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Globe className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-gray-900">DNS Leak Protection</span>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button className="ml-1 text-gray-400 hover:text-gray-600">
-                                <Info className="h-3 w-3" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent className="text-[10px] p-2 max-w-[200px]">
-                              <p>
-                                Ensures all DNS requests go through the VPN tunnel, preventing your ISP from seeing your
-                                browsing activity.
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5">Prevent DNS requests from leaking</div>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={dnsLeak}
-                    onCheckedChange={setDnsLeak}
-                    className="data-[state=checked]:bg-gradient-to-r from-emerald-600 to-teal-500"
-                  />
-                </div>
-
-                {/* IPv6 Leak Protection */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Lock className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-gray-900">IPv6 Leak Protection</span>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button className="ml-1 text-gray-400 hover:text-gray-600">
-                                <Info className="h-3 w-3" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent className="text-[10px] p-2 max-w-[200px]">
-                              <p>Disables IPv6 traffic to prevent leaks when using IPv4 VPN connections.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5">Disable IPv6 to prevent leaks</div>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={ipv6Leak}
-                    onCheckedChange={setIpv6Leak}
-                    className="data-[state=checked]:bg-gradient-to-r from-emerald-600 to-teal-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Privacy */}
-            <div className="rounded-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center">
-                  <Lock className="h-4 w-4 text-gray-500 mr-2" />
-                  <h2 className="text-sm font-medium text-gray-900">Privacy</h2>
-                </div>
-              </div>
-
-              <div className="p-4 space-y-4">
-                {/* Usage Analytics */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <SettingsIcon className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Usage Analytics</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Share anonymous usage data to improve the app</div>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={analytics}
-                    onCheckedChange={setAnalytics}
-                    className="data-[state=checked]:bg-gradient-to-r from-emerald-600 to-teal-500"
-                  />
-                </div>
-
-                {/* Clear Data */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Trash2 className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Clear Application Data</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Remove all locally stored data and preferences</div>
-                    </div>
-                  </div>
+                <div className="flex gap-2">
                   <Button
-                    variant="outline"
+                    variant={theme === 'light' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setShowClearDataDialog(true)}
-                    className="text-red-600 border-gray-200 hover:bg-red-50 text-xs h-8 px-3 rounded-sm"
+                    className={`h-7 sm:h-8 text-2xs sm:text-xs ${theme === 'light' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-white hover:bg-gray-50'}`}
+                    onClick={() => setTheme('light')}
                   >
-                    Clear Data
+                    <Sun className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
+                    Light
+                  </Button>
+                  <Button
+                    variant={theme === 'dark' ? 'default' : 'outline'}
+                    size="sm"
+                    className={`h-7 sm:h-8 text-2xs sm:text-xs ${theme === 'dark' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-white hover:bg-gray-50'}`}
+                    onClick={() => setTheme('dark')}
+                  >
+                    <Moon className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
+                    Dark
+                  </Button>
+                  <Button
+                    variant={theme === 'system' ? 'default' : 'outline'}
+                    size="sm"
+                    className={`h-7 sm:h-8 text-2xs sm:text-xs ${theme === 'system' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-white hover:bg-gray-50'}`}
+                    onClick={() => setTheme('system')}
+                  >
+                    <Monitor className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
+                    System
                   </Button>
                 </div>
               </div>
             </div>
           </div>
-        </TabsContent>
-
-        {/* Connection Settings Tab */}
-        <TabsContent value="connection">
-          <div className="space-y-6">
-            {/* Connection Preferences */}
-            <div className="rounded-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center">
-                  <Wifi className="h-4 w-4 text-gray-500 mr-2" />
-                  <h2 className="text-sm font-medium text-gray-900">Connection Preferences</h2>
+          
+          {/* Notifications */}
+          <div>
+            <h3 className="text-sm sm:text-base font-medium mb-2 sm:mb-3 flex items-center">
+              <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-600 mr-1.5 sm:mr-2" />
+              Notifications
+            </h3>
+            <div className="p-3 sm:p-4 rounded-lg bg-gray-50 space-y-3 sm:space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="text-xs sm:text-sm font-medium">Enable Notifications</div>
+                  <p className="text-2xs sm:text-xs text-gray-500">Receive notifications about updates and activity</p>
                 </div>
+                <Switch 
+                  checked={notifications} 
+                  onCheckedChange={setNotifications}
+                  className="data-[state=checked]:bg-emerald-600"
+                />
               </div>
-
-              <div className="p-4 space-y-4">
-                {/* Auto-Connect */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Wifi className="h-4 w-4 text-gray-700" />
+              
+              {notifications && (
+                <div className="pt-2 sm:pt-3 border-t border-gray-200 space-y-3 sm:space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="text-xs sm:text-sm font-medium">Email Notifications</div>
+                      <p className="text-2xs sm:text-xs text-gray-500">Receive notifications via email</p>
                     </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Auto-Connect</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Connect to VPN when application starts</div>
-                    </div>
+                    <Switch 
+                      checked={updates} 
+                      onCheckedChange={setUpdates}
+                      className="data-[state=checked]:bg-emerald-600"
+                    />
                   </div>
-                  <Switch
-                    checked={autoConnect}
-                    onCheckedChange={setAutoConnect}
-                    className="data-[state=checked]:bg-gradient-to-r from-emerald-600 to-teal-500"
-                  />
-                </div>
-
-                {/* Protocol Selection */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Server className="h-4 w-4 text-gray-700" />
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="text-xs sm:text-sm font-medium">Push Notifications</div>
+                      <p className="text-2xs sm:text-xs text-gray-500">Receive notifications in the browser</p>
                     </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Protocol</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Select preferred VPN protocol</div>
-                    </div>
+                    <Switch 
+                      checked={notifications} 
+                      onCheckedChange={setNotifications}
+                      className="data-[state=checked]:bg-emerald-600"
+                    />
                   </div>
-                  <select
-                    value={protocol}
-                    onChange={(e) => setProtocol(e.target.value)}
-                    className="h-8 rounded-sm border-gray-200 text-xs focus:border-emerald-500 focus:ring-emerald-500"
-                  >
-                    <option value="automatic">Automatic</option>
-                    <option value="openvpn">OpenVPN</option>
-                    <option value="wireguard">WireGuard</option>
-                    <option value="ikev2">IKEv2</option>
-                  </select>
                 </div>
-
-                {/* Trusted Networks */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Shield className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Trusted Networks</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Manage networks where VPN is not required</div>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-gray-900 border-gray-200 hover:bg-gray-50 text-xs h-8 px-3 rounded-sm"
-                  >
-                    Configure
-                    <ChevronRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </div>
-              </div>
+              )}
             </div>
-
-            {/* Connection Troubleshooting */}
-            <div className="rounded-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center">
-                  <AlertCircle className="h-4 w-4 text-gray-500 mr-2" />
-                  <h2 className="text-sm font-medium text-gray-900">Troubleshooting</h2>
+          </div>
+          
+          {/* Regional Settings */}
+          <div>
+            <h3 className="text-sm sm:text-base font-medium mb-2 sm:mb-3 flex items-center">
+              <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-600 mr-1.5 sm:mr-2" />
+              Regional Settings
+            </h3>
+            <div className="p-3 sm:p-4 rounded-lg bg-gray-50 space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                <div className="space-y-0.5 sm:w-1/3">
+                  <div className="text-xs sm:text-sm font-medium">Language</div>
+                  <p className="text-2xs sm:text-xs text-gray-500">Select your preferred language</p>
+                </div>
+                <div className="w-full sm:w-2/3">
+                  <Select value={language} onValueChange={setLanguage}>
+                    <SelectTrigger className="w-full h-8 sm:h-9 text-xs sm:text-sm">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="english">English</SelectItem>
+                      <SelectItem value="spanish">Spanish</SelectItem>
+                      <SelectItem value="french">French</SelectItem>
+                      <SelectItem value="german">German</SelectItem>
+                      <SelectItem value="japanese">Japanese</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-
-              <div className="p-4 space-y-4">
-                {/* Connection Test */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Wifi className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Connection Test</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Test VPN connection and detect issues</div>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 text-xs h-8 px-3 rounded-sm"
-                  >
-                    Run Test
-                  </Button>
+              
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                <div className="space-y-0.5 sm:w-1/3">
+                  <div className="text-xs sm:text-sm font-medium">Timezone</div>
+                  <p className="text-2xs sm:text-xs text-gray-500">Set your timezone for accurate time display</p>
                 </div>
-
-                {/* Diagnostic Logs */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <HelpCircle className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Diagnostic Logs</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Export logs for troubleshooting</div>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-gray-900 border-gray-200 hover:bg-gray-50 text-xs h-8 px-3 rounded-sm"
-                  >
-                    Export Logs
-                  </Button>
+                <div className="w-full sm:w-2/3">
+                  <Select value={timezone} onValueChange={setTimezone}>
+                    <SelectTrigger className="w-full h-8 sm:h-9 text-xs sm:text-sm">
+                      <SelectValue placeholder="Select timezone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="utc-12">UTC-12:00</SelectItem>
+                      <SelectItem value="utc-11">UTC-11:00</SelectItem>
+                      <SelectItem value="utc-10">UTC-10:00</SelectItem>
+                      <SelectItem value="utc-9">UTC-09:00</SelectItem>
+                      <SelectItem value="utc-8">UTC-08:00 (PST)</SelectItem>
+                      <SelectItem value="utc-7">UTC-07:00 (MST)</SelectItem>
+                      <SelectItem value="utc-6">UTC-06:00 (CST)</SelectItem>
+                      <SelectItem value="utc-5">UTC-05:00 (EST)</SelectItem>
+                      <SelectItem value="utc-4">UTC-04:00</SelectItem>
+                      <SelectItem value="utc-3">UTC-03:00</SelectItem>
+                      <SelectItem value="utc-2">UTC-02:00</SelectItem>
+                      <SelectItem value="utc-1">UTC-01:00</SelectItem>
+                      <SelectItem value="utc">UTC±00:00</SelectItem>
+                      <SelectItem value="utc+1">UTC+01:00</SelectItem>
+                      <SelectItem value="utc+2">UTC+02:00</SelectItem>
+                      <SelectItem value="utc+3">UTC+03:00</SelectItem>
+                      <SelectItem value="utc+4">UTC+04:00</SelectItem>
+                      <SelectItem value="utc+5">UTC+05:00</SelectItem>
+                      <SelectItem value="utc+6">UTC+06:00</SelectItem>
+                      <SelectItem value="utc+7">UTC+07:00</SelectItem>
+                      <SelectItem value="utc+8">UTC+08:00</SelectItem>
+                      <SelectItem value="utc+9">UTC+09:00</SelectItem>
+                      <SelectItem value="utc+10">UTC+10:00</SelectItem>
+                      <SelectItem value="utc+11">UTC+11:00</SelectItem>
+                      <SelectItem value="utc+12">UTC+12:00</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                <div className="space-y-0.5 sm:w-1/3">
+                  <div className="text-xs sm:text-sm font-medium">Date Format</div>
+                  <p className="text-2xs sm:text-xs text-gray-500">Choose how dates should be displayed</p>
+                </div>
+                <div className="w-full sm:w-2/3">
+                  <Select value={dateFormat} onValueChange={setDateFormat}>
+                    <SelectTrigger className="w-full h-8 sm:h-9 text-xs sm:text-sm">
+                      <SelectValue placeholder="Select date format" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mdy">MM/DD/YYYY</SelectItem>
+                      <SelectItem value="dmy">DD/MM/YYYY</SelectItem>
+                      <SelectItem value="ymd">YYYY/MM/DD</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
           </div>
-        </TabsContent>
-
-        {/* Advanced Settings Tab */}
-        <TabsContent value="advanced">
-          <div className="space-y-6">
-            {/* Advanced Options */}
-            <div className="rounded-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center">
-                  <SettingsIcon className="h-4 w-4 text-gray-500 mr-2" />
-                  <h2 className="text-sm font-medium text-gray-900">Advanced Options</h2>
+          
+          {/* Privacy & Data */}
+          <div>
+            <h3 className="text-sm sm:text-base font-medium mb-2 sm:mb-3 flex items-center">
+              <Lock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-600 mr-1.5 sm:mr-2" />
+              Privacy & Data
+            </h3>
+            <div className="p-3 sm:p-4 rounded-lg bg-gray-50 space-y-3 sm:space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="text-xs sm:text-sm font-medium">Usage Analytics</div>
+                  <p className="text-2xs sm:text-xs text-gray-500">Help us improve by sending anonymous usage data</p>
                 </div>
+                <Switch 
+                  checked={analytics} 
+                  onCheckedChange={setAnalytics}
+                  className="data-[state=checked]:bg-emerald-600"
+                />
               </div>
-
-              <div className="p-4 space-y-4">
-                {/* Custom DNS */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Globe className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Custom DNS</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Configure custom DNS servers</div>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-gray-900 border-gray-200 hover:bg-gray-50 text-xs h-8 px-3 rounded-sm"
-                  >
-                    Configure
-                    <ChevronRight className="h-3 w-3 ml-1" />
-                  </Button>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="text-xs sm:text-sm font-medium">Cookie Consent</div>
+                  <p className="text-2xs sm:text-xs text-gray-500">Allow cookies to enhance your experience</p>
                 </div>
-
-                {/* Split Tunneling */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Server className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-gray-900">Split Tunneling</span>
-                        <Badge
-                          variant="outline"
-                          className="ml-2 bg-amber-50 text-amber-700 border-0 text-[9px] px-1.5 py-0"
-                        >
-                          BETA
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5">Choose which apps use the VPN connection</div>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-gray-900 border-gray-200 hover:bg-gray-50 text-xs h-8 px-3 rounded-sm"
-                  >
-                    Configure
-                    <ChevronRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </div>
-
-                {/* Port Forwarding */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <Server className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Port Forwarding</div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        Configure port forwarding for specific applications
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-gray-900 border-gray-200 hover:bg-gray-50 text-xs h-8 px-3 rounded-sm"
-                  >
-                    Configure
-                    <ChevronRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </div>
+                <Switch 
+                  checked={privacySettings.cookieConsent} 
+                  onCheckedChange={(value) => setPrivacySettings({...privacySettings, cookieConsent: value})}
+                  className="data-[state=checked]:bg-emerald-600"
+                />
               </div>
-            </div>
-
-            {/* Reset Settings */}
-            <div className="rounded-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                <div className="flex items-center">
-                  <RefreshCw className="h-4 w-4 text-gray-500 mr-2" />
-                  <h2 className="text-sm font-medium text-gray-900">Reset Settings</h2>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="text-xs sm:text-sm font-medium">Data Sharing</div>
+                  <p className="text-2xs sm:text-xs text-gray-500">Share data with our trusted partners</p>
                 </div>
-              </div>
-
-              <div className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-sm bg-gray-100 flex items-center justify-center mr-3">
-                      <RefreshCw className="h-4 w-4 text-gray-700" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">Restore Default Settings</div>
-                      <div className="text-xs text-gray-500 mt-0.5">Reset all settings to their default values</div>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowResetDialog(true)}
-                    className="text-red-600 border-gray-200 hover:bg-red-50 text-xs h-8 px-3 rounded-sm"
-                  >
-                    Reset All
-                  </Button>
-                </div>
+                <Switch 
+                  checked={privacySettings.dataSharing} 
+                  onCheckedChange={(value) => setPrivacySettings({...privacySettings, dataSharing: value})}
+                  className="data-[state=checked]:bg-emerald-600"
+                />
               </div>
             </div>
           </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Save Changes Button */}
-      <div className="flex justify-end">
-        <Button
-          size="sm"
-          className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white text-xs h-9 px-4 rounded-sm"
-        >
-          <Save className="h-3.5 w-3.5 mr-1.5" />
-          Save Changes
-        </Button>
+          
+          {/* Data Export */}
+          <div>
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm sm:text-base font-medium flex items-center">
+                <PieChart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-600 mr-1.5 sm:mr-2" />
+                Data Export
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 sm:h-8 text-2xs sm:text-xs"
+              >
+                Request Data Export
+              </Button>
+            </div>
+            <p className="text-2xs sm:text-xs text-gray-500 mt-1">Download all your data and activity history.</p>
+            <p className="text-2xs sm:text-xs mt-1 flex items-center text-amber-600">
+              <Info className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 flex-shrink-0" />
+              Data exports are processed within 24-48 hours and sent via email.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Reset Settings Dialog */}

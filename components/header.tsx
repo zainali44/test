@@ -85,20 +85,20 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white border-b border-gray-100 h-16 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20 shadow-sm">
-      <div className="flex items-center gap-4">
+    <header className="bg-white border-b border-gray-100 h-14 md:h-16 flex items-center justify-between px-3 sm:px-4 md:px-6 sticky top-0 z-20 shadow-sm">
+      <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden text-gray-500 hover:text-gray-700"
+          className="md:hidden text-gray-500 hover:text-gray-700 h-8 w-8"
           onClick={toggleSidebar}
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-4 w-4" />
         </Button>
         <div className="md:hidden flex items-center">
           <Link href="/dashboard" className="flex items-center">
-            <div className="h-8 w-8 rounded-md bg-gradient-to-r from-emerald-600 to-teal-500 flex items-center justify-center">
-              <Shield className="h-4 w-4 text-white" />
+            <div className="h-7 w-7 md:h-8 md:w-8 rounded-md bg-gradient-to-r from-emerald-600 to-teal-500 flex items-center justify-center">
+              <Shield className="h-3.5 w-3.5 md:h-4 md:w-4 text-white" />
             </div>
           </Link>
         </div>
@@ -107,10 +107,10 @@ export default function Header() {
       <div className="flex items-center gap-2 md:gap-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 h-9 px-2 rounded-full hover:bg-gray-100">
-              <Avatar className="h-8 w-8 border border-gray-200">
+            <Button variant="ghost" className="flex items-center gap-2 h-8 md:h-9 px-1 md:px-2 rounded-full hover:bg-gray-100">
+              <Avatar className="h-7 w-7 md:h-8 md:w-8 border border-gray-200">
                 <AvatarImage src="" alt="User" />
-                <AvatarFallback className="bg-emerald-600 text-white font-medium">{initials}</AvatarFallback>
+                <AvatarFallback className="bg-emerald-600 text-white font-medium text-xs md:text-sm">{initials}</AvatarFallback>
               </Avatar>
               <div className="hidden md:flex flex-col items-start text-sm">
                 <span className="font-medium">{name}</span>

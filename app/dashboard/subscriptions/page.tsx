@@ -587,22 +587,22 @@ export default function SubscriptionsPage() {
   };
 
   return (
-    <div className="max-w-[1000px] mx-auto px-4 py-6">
+    <div className="max-w-[1000px] mx-auto px-2 sm:px-4 py-4 sm:py-6">
       {/* Loading state */}
       {loading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+        <div className="flex items-center justify-center py-8 sm:py-12">
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 animate-spin" />
           <span className="ml-3 text-sm text-gray-500">Loading subscription data...</span>
         </div>
       )}
 
       {/* Error state */}
       {error && !loading && (
-        <div className="bg-red-50 border border-red-200 rounded-sm p-4 mb-6">
+        <div className="bg-red-50 border border-red-200 rounded-sm p-3 sm:p-4 mb-4 sm:mb-6">
           <div className="flex items-center">
-            <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
+            <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 mr-2" />
             <div>
-              <h3 className="text-sm font-medium text-red-800">Error Loading Subscription</h3>
+              <h3 className="text-xs sm:text-sm font-medium text-red-800">Error Loading Subscription</h3>
               <p className="text-xs text-red-700 mt-1">{error}</p>
             </div>
           </div>
@@ -627,9 +627,9 @@ export default function SubscriptionsPage() {
       {!loading && !error && (
         <>
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-medium text-gray-900">Subscriptions</h1>
+          <div className="mb-4 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+              <h1 className="text-lg sm:text-xl font-medium text-gray-900">Subscriptions</h1>
               <div className="flex gap-2">
                 <Button
                   size="sm"
@@ -654,9 +654,9 @@ export default function SubscriptionsPage() {
           </div>
 
           {/* Subscription Overview */}
-          <div className="bg-white border border-gray-200 rounded-sm shadow-sm mb-6">
+          <div className="bg-white border border-gray-200 rounded-sm shadow-sm mb-4 sm:mb-6">
             {isFreePlan() ? (
-              <div className="p-5">
+              <div className="p-3 sm:p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center">
                     <div className="w-8 h-8 rounded-sm flex items-center justify-center mr-3 bg-gradient-to-r from-gray-400 to-gray-500">
@@ -676,9 +676,9 @@ export default function SubscriptionsPage() {
                   </div>
                 </div>
                 
-                <div className="mt-4 bg-gray-50 p-4 rounded-sm border border-gray-100">
+                <div className="mt-4 bg-gray-50 p-3 sm:p-4 rounded-sm border border-gray-100">
                   <div className="flex items-center">
-                    <Info className="h-4 w-4 text-gray-400 mr-2" />
+                    <Info className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
                     <p className="text-xs text-gray-600">You are currently on the Free Plan with limited features. Upgrade to a paid plan to access premium features.</p>
                   </div>
                   
@@ -693,7 +693,7 @@ export default function SubscriptionsPage() {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between mb-4 p-4">
+                <div className="flex items-center justify-between mb-4 p-3 sm:p-4">
                   <div className="flex items-center">
                     <div className={`w-8 h-8 rounded-sm flex items-center justify-center mr-3 ${
                       subscriptionData.planType === 'Premium' 
@@ -725,8 +725,8 @@ export default function SubscriptionsPage() {
                 </div>
 
                 {!isFreePlan() && (
-                  <div className="px-4 pb-4">
-                    <div className="mb-6">
+                  <div className="px-3 sm:px-4 pb-3 sm:pb-4">
+                    <div className="mb-4 sm:mb-6">
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-[11px] text-gray-500">{subscriptionData.daysRemaining} days remaining</span>
                         <span className="text-[11px] text-gray-500">
@@ -742,7 +742,7 @@ export default function SubscriptionsPage() {
               </>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-gray-100 p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-gray-100 p-3 sm:p-4">
               {/* Billing Cycle */}
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Billing Cycle</div>
@@ -782,7 +782,7 @@ export default function SubscriptionsPage() {
 
             {/* Payment Method - Only show for paid plans */}
             {subscriptionData.subscriptionType !== 'FREE' && (
-              <div className="bg-gray-50 border border-gray-100 p-3 rounded-sm">
+              <div className="bg-gray-50 border border-gray-100 p-3 rounded-sm mx-3 sm:mx-4 mb-3 sm:mb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <CreditCard className="h-3.5 w-3.5 text-gray-500 mr-2" />
@@ -806,8 +806,8 @@ export default function SubscriptionsPage() {
           </div>
 
           {/* Billing History Section */}
-          <div className="mt-8">
-            <div className="flex items-center justify-between mb-4">
+          <div className="mt-6 sm:mt-8">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h2 className="text-sm font-medium text-gray-900">Billing History</h2>
               {billingHistory.length > 0 && (
                 <Link href="/dashboard/billing-history">
@@ -820,8 +820,8 @@ export default function SubscriptionsPage() {
             </div>
 
             {loadingHistory ? (
-              <div className="border border-gray-200 rounded-sm p-8 text-center">
-                <Loader2 className="h-8 w-8 text-emerald-500 animate-spin mx-auto mb-4" />
+              <div className="border border-gray-200 rounded-sm p-6 sm:p-8 text-center">
+                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-500 animate-spin mx-auto mb-3 sm:mb-4" />
                 <p className="text-sm text-gray-500">Loading transaction history...</p>
               </div>
             ) : billingHistory.length > 0 ? (
@@ -830,23 +830,23 @@ export default function SubscriptionsPage() {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="text-[10px] uppercase tracking-wider text-gray-500 font-medium px-3 py-2">Date</th>
-                        <th className="text-[10px] uppercase tracking-wider text-gray-500 font-medium px-3 py-2">
+                        <th className="text-[10px] uppercase tracking-wider text-gray-500 font-medium px-2 sm:px-3 py-2">Date</th>
+                        <th className="text-[10px] uppercase tracking-wider text-gray-500 font-medium px-2 sm:px-3 py-2">
                           Description
                         </th>
-                        <th className="text-[10px] uppercase tracking-wider text-gray-500 font-medium px-3 py-2">Amount</th>
-                        <th className="text-[10px] uppercase tracking-wider text-gray-500 font-medium px-3 py-2">Status</th>
+                        <th className="text-[10px] uppercase tracking-wider text-gray-500 font-medium px-2 sm:px-3 py-2">Amount</th>
+                        <th className="text-[10px] uppercase tracking-wider text-gray-500 font-medium px-2 sm:px-3 py-2">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {billingHistory.slice(0, 5).map((item, index) => (
                         <tr key={index}>
-                          <td className="text-xs px-3 py-2">{item.date}</td>
-                          <td className="text-xs px-3 py-2">
+                          <td className="text-xs px-2 sm:px-3 py-2">{item.date}</td>
+                          <td className="text-xs px-2 sm:px-3 py-2">
                             {getPaymentMethodDisplay(item)}
                           </td>
-                          <td className="text-xs px-3 py-2">{item.amount}</td>
-                          <td className="text-xs px-3 py-2">
+                          <td className="text-xs px-2 sm:px-3 py-2">{item.amount}</td>
+                          <td className="text-xs px-2 sm:px-3 py-2">
                             <Badge variant="outline" className={`${
                               item.status.toLowerCase() === 'completed' || item.status.toLowerCase() === 'paid'
                                 ? 'bg-green-50 text-emerald-700'
@@ -864,13 +864,13 @@ export default function SubscriptionsPage() {
                 </div>
               </div>
             ) : (
-              <div className="border border-gray-200 rounded-sm p-8 text-center">
-                <div className="max-w-[200px] h-[140px] mx-auto mb-6 relative">
+              <div className="border border-gray-200 rounded-sm p-4 sm:p-8 text-center">
+                <div className="max-w-[160px] sm:max-w-[200px] h-[120px] sm:h-[140px] mx-auto mb-4 sm:mb-6 relative">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Receipt className="h-16 w-16 text-gray-300" />
+                    <Receipt className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300" />
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-gray-400" />
+                    <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400" />
                   </div>
                 </div>
                 <h3 className="text-sm font-medium text-gray-900 mb-2">No Billing History Yet</h3>
@@ -890,12 +890,12 @@ export default function SubscriptionsPage() {
 
           {/* Special Offer - Only show for free plans */}
           {subscriptionData.subscriptionType === 'FREE' && (
-            <div className="mb-8 border border-gray-200 rounded-sm overflow-hidden">
-              <div className="p-4 bg-gradient-to-r from-amber-50 to-amber-100">
-                <div className="flex items-center justify-between">
+            <div className="my-4 sm:mb-8 border border-gray-200 rounded-sm overflow-hidden">
+              <div className="p-3 sm:p-4 bg-gradient-to-r from-amber-50 to-amber-100">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center">
-                    <div className="w-10 h-10 rounded-sm bg-gradient-to-r from-amber-500 to-amber-600 flex items-center justify-center mr-3">
-                      <Shield className="h-5 w-5 text-white" />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-sm bg-gradient-to-r from-amber-500 to-amber-600 flex items-center justify-center mr-3 flex-shrink-0">
+                      <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-amber-900">Special Upgrade Offer</h3>
@@ -904,7 +904,7 @@ export default function SubscriptionsPage() {
                   </div>
                   <Button 
                     size="sm" 
-                    className="bg-amber-500 hover:bg-amber-600 text-white text-xs rounded-full h-7"
+                    className="bg-amber-500 hover:bg-amber-600 text-white text-xs rounded-full h-7 w-full sm:w-auto"
                     asChild
                   >
                     <Link href="/dashboard/upgrade">
@@ -918,7 +918,7 @@ export default function SubscriptionsPage() {
 
           {/* Cancel Subscription Dialog */}
           <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-            <AlertDialogContent className="max-w-md">
+            <AlertDialogContent className="max-w-md mx-2">
               <AlertDialogHeader>
                 <AlertDialogTitle>Cancel Your Subscription?</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -926,8 +926,8 @@ export default function SubscriptionsPage() {
                   until October 28, 2025.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="text-xs">Keep Subscription</AlertDialogCancel>
+              <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                <AlertDialogCancel className="text-xs mt-0">Keep Subscription</AlertDialogCancel>
                 <AlertDialogAction className="bg-red-500 hover:bg-red-600 text-xs">Confirm Cancellation</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

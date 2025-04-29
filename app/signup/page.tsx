@@ -19,6 +19,7 @@ export default function SignupPage() {
   const [mounted, setMounted] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
+  const [successMessage, setSuccessMessage] = useState("")
   const [validationErrors, setValidationErrors] = useState<{name?: string, email?: string, password?: string}>({})
   const router = useRouter()
 
@@ -77,8 +78,9 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Clear any previous errors
+    // Clear any previous messages
     setErrorMessage("")
+    setSuccessMessage("")
     
     // Validate form
     if (!validateForm()) {
@@ -110,16 +112,31 @@ export default function SignupPage() {
       // Registration successful
       console.log('Registration successful:', data);
       
-      // Store token in localStorage if it exists in the response
+      // Check if token is returned (automatic login was successful)
       if (data.data?.token && typeof window !== 'undefined') {
         localStorage.setItem('auth-token', data.data.token);
+        
+        // Show success toast or message briefly before redirect
+        setSuccessMessage("Registration successful. Please check your email for a verification link.");
+        
+        // Redirect to dashboard after a short delay
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 100);
+        
+        return;
       }
       
-      // Use a timeout to ensure state updates are complete before navigation
-      setTimeout(() => {
-        // Redirect to dashboard using Next.js router
-        router.push("/dashboard");
-      }, 100);
+      // No token - just show the success message about email verification
+      setSuccessMessage(data.message || "Check your email! We've sent you a verification link. If not received, please check your spam folder.");
+      
+      // Reset form
+      setName("");
+      setEmail("");
+      setPassword("");
+      setPasswordStrength(0);
+      
+      setIsLoading(false);
       
     } catch (error) {
       console.error('Registration error:', error);
@@ -341,6 +358,13 @@ export default function SignupPage() {
         >
           Create your account
         </motion.h2>
+
+        {/* Display success message if any */}
+        {successMessage && (
+          <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md text-xs sm:text-sm">
+            {successMessage}
+          </div>
+        )}
 
         {/* Display error message if any */}
         {errorMessage && (

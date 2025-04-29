@@ -9,8 +9,8 @@ export default function PaymentFailurePage() {
   
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="w-full max-w-3xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="bg-red-50 p-6">
+      <div className="w-full max-w-3xl mx-auto bg-white overflow-hidden">
+        <div className="p-6">
           <h1 className="text-2xl font-bold text-center text-red-600">
             Payment Failed
           </h1>

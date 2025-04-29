@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
     Check,
@@ -24,46 +24,241 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/app/contexts/auth-context"
 import { Card } from "@/components/ui/card"
+import { useSubscription } from "@/app/contexts/subscription-context"
+import { PaymentMethodsSheet } from "@/components/payment-methods-sheet"
+import Link from "next/link"
 
 export default function UpgradePage() {
     const { user } = useAuth()
+    const { subscription, forceSubscriptionRefresh } = useSubscription()
     const router = useRouter()
     const [selectedPlan, setSelectedPlan] = useState<"individual" | "basic" | "premium">("premium")
     const [selectedDuration, setSelectedDuration] = useState<"yearly" | "monthly">("yearly")
+    const [currentBillingCycle, setCurrentBillingCycle] = useState<"yearly" | "monthly" | null>(null)
+
+    // Add detailed debugging logs
+    useEffect(() => {
+        console.log("==== DEBUG SUBSCRIPTION DATA ====");
+        console.log("subscription object:", subscription);
+        if (subscription && (subscription as any).data) {
+            console.log("subscription.data:", (subscription as any).data);
+            console.log("subscription.data.plan_id:", (subscription as any).data.plan_id);
+        }
+        console.log("user object:", user);
+        console.log("user.subscriptions:", user?.subscriptions);
+        if (user && user.subscriptions && user.subscriptions.length > 0) {
+            console.log("First active subscription:", user.subscriptions.find(sub => sub.status === 'active'));
+        }
+        console.log("================================");
+    }, [subscription, user]);
+
+    // Get the current billing cycle
+    const getBillingCycle = useCallback(() => {
+        // Check direct subscription first
+        if (subscription) {
+            const subscriptionData = (subscription as any).data || subscription;
+            
+            // Check for billing_cycle property in different locations using safe property access
+            if (subscriptionData && typeof subscriptionData === 'object') {
+                // Use type assertion to safely check properties
+                if ('billing_cycle' in subscriptionData) {
+                    return subscriptionData.billing_cycle as string;
+                }
+                
+                // Check in plan object
+                const planObj = subscriptionData.plan || null;
+                if (planObj && typeof planObj === 'object' && 'billing_cycle' in planObj) {
+                    return planObj.billing_cycle as string;
+                }
+                
+                // Check in Plan object
+                const PlanObj = subscriptionData.Plan || null;
+                if (PlanObj && typeof PlanObj === 'object' && 'billing_cycle' in PlanObj) {
+                    return PlanObj.billing_cycle as string;
+                }
+                
+                // Check for duration property
+                if ('duration' in subscriptionData) {
+                    return subscriptionData.duration as string;
+                }
+            }
+        }
+        
+        // Check user object fallback
+        if (user?.subscriptions && Array.isArray(user.subscriptions) && user.subscriptions.length > 0) {
+            const activeSubscription = user.subscriptions.find(sub => sub.status === 'active');
+            if (activeSubscription && typeof activeSubscription === 'object') {
+                // Use type assertion for safe property access
+                if ('billing_cycle' in activeSubscription) {
+                    return activeSubscription.billing_cycle as string;
+                }
+                
+                const subPlan = activeSubscription.plan || null;
+                if (subPlan && typeof subPlan === 'object' && 'billing_cycle' in subPlan) {
+                    return subPlan.billing_cycle as string;
+                }
+                
+                if ('duration' in activeSubscription) {
+                    return activeSubscription.duration as string;
+                }
+            }
+        }
+        
+        return null;
+    }, [subscription, user]);
+
+    // Set billing cycle on mount and when subscription changes
+    useEffect(() => {
+        const cycle = getBillingCycle();
+        if (cycle === 'monthly' || cycle === 'yearly') {
+            setCurrentBillingCycle(cycle);
+            // Also set the selected duration to match current cycle
+            setSelectedDuration(cycle);
+        }
+    }, [subscription, user, getBillingCycle]);
 
     // Check if user has a free plan
     const isFreePlan = () => {
-        if (!user || !user.subscriptions || !Array.isArray(user.subscriptions) || user.subscriptions.length === 0) {
-            return true
+        console.log("Checking if user has free plan, subscription:", subscription);
+        console.log("User Plan:", user?.subscriptions);
+        
+        // First check subscription data from API
+        if (subscription) {
+            const subscriptionData = (subscription as any).data || subscription;
+            
+            // If we have a plan_id directly in the data, check it
+            if (subscriptionData.plan_id !== undefined) {
+                return subscriptionData.plan_id === 1; // Only plan ID 1 is free
+            }
+            
+            // Check if it's in a Plan object
+            if (subscriptionData.Plan) {
+                if ((subscriptionData.Plan as any).id !== undefined) {
+                    return (subscriptionData.Plan as any).id === 1;
+                }
+                // Fallback to name check if no id
+                return subscriptionData.Plan.name?.toLowerCase() === 'free';
+            }
+            
+            // Check if it's in User object
+            if (subscriptionData.User) {
+                if (subscriptionData.User.subscription_plan_id !== undefined) {
+                    return subscriptionData.User.subscription_plan_id === 1;
+                }
+                // Fallback to name check
+                return subscriptionData.User.subscription_plan?.toLowerCase() === 'free';
+            }
         }
         
-        const activeSubscription = user.subscriptions.find(sub => sub.status === 'active')
-        return !activeSubscription || activeSubscription.plan?.name === 'Free'
+        // User object fallback
+        if (!user || !user.subscriptions || !Array.isArray(user.subscriptions) || user.subscriptions.length === 0) {
+            return true; // No subscription means free plan
+        }
+        
+        const activeSubscription = user.subscriptions.find(sub => sub.status === 'active');
+        if (!activeSubscription) {
+            return true; // No active subscription means free plan
+        }
+        
+        // Check plan_id in the active subscription
+        if (activeSubscription.plan_id !== undefined) {
+            return activeSubscription.plan_id === 1;
+        }
+        
+        // Check plan object
+        if (activeSubscription.plan) {
+            if ((activeSubscription.plan as any).id !== undefined) {
+                return (activeSubscription.plan as any).id === 1;
+            }
+            return activeSubscription.plan.name?.toLowerCase() === 'free';
+        }
+        
+        return true; // Default to free plan if we can't determine
     }
 
     // Get current plan from user subscription data
-    const getCurrentPlan = () => {
+    const getCurrentPlan = (): { name: string; type: 'individual' | 'basic' | 'premium' | null } => {
+        // Check subscription data from API first
+        if (subscription) {
+            const subscriptionData = (subscription as any).data || subscription;
+            
+            // Check plan_id in the subscription data
+            if (subscriptionData.plan_id !== undefined) {
+                if (subscriptionData.plan_id === 1) return { name: 'Free Plan', type: null };
+                if (subscriptionData.plan_id === 2) return { name: 'Individual Plan', type: 'individual' };
+                if (subscriptionData.plan_id === 3) return { name: 'Premium Plan', type: 'premium' };
+                if (subscriptionData.plan_id === 4) return { name: 'Premium Plan', type: 'premium' };
+            }
+            
+            // Check Plan object
+            if (subscriptionData.Plan) {
+                if ((subscriptionData.Plan as any).id !== undefined) {
+                    if ((subscriptionData.Plan as any).id === 1) return { name: 'Free Plan', type: null };
+                    if ((subscriptionData.Plan as any).id === 2) return { name: 'Individual Plan', type: 'individual' };
+                    if ((subscriptionData.Plan as any).id === 3) return { name: 'Premium Plan', type: 'premium' };
+                    if ((subscriptionData.Plan as any).id === 4) return { name: 'Premium Plan', type: 'premium' };
+                }
+                
+                // Fallback to name-based check
+                const planName = subscriptionData.Plan.name || 'Free';
+                if (planName.toLowerCase().includes('premium') || planName.toLowerCase().includes('plus')) return { name: 'Premium Plan', type: 'premium' };
+                if (planName.toLowerCase().includes('basic') || planName.toLowerCase().includes('standard')) return { name: 'Basic Plan', type: 'basic' };
+                if (planName.toLowerCase() !== 'free') return { name: planName + ' Plan', type: 'individual' };
+                return { name: 'Free Plan', type: null };
+            }
+            
+            // Check User object
+            if (subscriptionData.User) {
+                if (subscriptionData.User.subscription_plan_id !== undefined) {
+                    if (subscriptionData.User.subscription_plan_id === 1) return { name: 'Free Plan', type: null };
+                    if (subscriptionData.User.subscription_plan_id === 2) return { name: 'Individual Plan', type: 'individual' };
+                    if (subscriptionData.User.subscription_plan_id === 3) return { name: 'Premium Plan', type: 'premium' };
+                    if (subscriptionData.User.subscription_plan_id === 4) return { name: 'Premium Plan', type: 'premium' };
+                }
+                
+                // Fallback to name-based check
+                const planName = subscriptionData.User.subscription_plan || 'Free';
+                if (planName.toLowerCase().includes('premium')) return { name: 'Premium Plan', type: 'premium' };
+                if (planName.toLowerCase().includes('basic')) return { name: 'Basic Plan', type: 'basic' };
+                if (planName.toLowerCase() !== 'free') return { name: planName + ' Plan', type: 'individual' };
+                return { name: 'Free Plan', type: null };
+            }
+        }
+        
+        // User object fallback
         if (!user || !user.subscriptions || !Array.isArray(user.subscriptions) || user.subscriptions.length === 0) {
-            return { name: 'Free', type: null }
+            return { name: 'Free Plan', type: null };
         }
         
-        const activeSubscription = user.subscriptions.find(sub => sub.status === 'active')
+        const activeSubscription = user.subscriptions.find(sub => sub.status === 'active');
         if (!activeSubscription) {
-            return { name: 'Free', type: null }
+            return { name: 'Free Plan', type: null };
         }
         
-        const planName = activeSubscription.plan?.name || 'Free'
-        
-        // Map the plan name to our plan types
-        if (planName.toLowerCase().includes('premium')) {
-            return { name: planName, type: 'premium' }
-        } else if (planName.toLowerCase().includes('basic')) {
-            return { name: planName, type: 'basic' }
-        } else if (planName.toLowerCase() !== 'free') {
-            return { name: planName, type: 'individual' }
+        // Check plan_id in the active subscription
+        if (activeSubscription.plan_id !== undefined) {
+            if (activeSubscription.plan_id === 1) return { name: 'Free Plan', type: null };
+            if (activeSubscription.plan_id === 2) return { name: 'Individual Plan', type: 'individual' };
+            if (activeSubscription.plan_id === 3) return { name: 'Premium Plan', type: 'premium' };
+            if (activeSubscription.plan_id === 4) return { name: 'Premium Plan', type: 'premium' };
         }
         
-        return { name: planName, type: null }
+        // Check plan object
+        if (activeSubscription.plan) {
+            if ((activeSubscription.plan as any).id !== undefined) {
+                if ((activeSubscription.plan as any).id === 1) return { name: 'Free Plan', type: null };
+                if ((activeSubscription.plan as any).id === 2) return { name: 'Individual Plan', type: 'individual' };
+                if ((activeSubscription.plan as any).id === 3) return { name: 'Premium Plan', type: 'premium' };
+                if ((activeSubscription.plan as any).id === 4) return { name: 'Premium Plan', type: 'premium' };
+            }
+            
+            const planName = activeSubscription.plan.name || 'Free';
+            if (planName.toLowerCase().includes('premium') || planName.toLowerCase().includes('plus')) return { name: 'Premium Plan', type: 'premium' };
+            if (planName.toLowerCase().includes('basic') || planName.toLowerCase().includes('standard')) return { name: 'Basic Plan', type: 'basic' };
+            if (planName.toLowerCase() !== 'free') return { name: planName + ' Plan', type: 'individual' };
+        }
+        
+        return { name: 'Free Plan', type: null };
     }
 
     // Set the selected plan based on user subscription when component mounts
@@ -160,30 +355,71 @@ export default function UpgradePage() {
         return today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     }
 
-    // Get current plan information
+    // Current subscription info
     const currentPlan = getCurrentPlan()
     const currentPlanDisplay = currentPlan.name || 'Free Plan'
+    const isSameCycle = currentBillingCycle === selectedDuration
+    
+    // Function to check if the current plan button should be disabled based on billing cycle
+    const isPlanDisabled = (planType: "individual" | "basic" | "premium") => {
+        // If it's a free plan, never disable
+        if (isFreePlan()) return false;
+        
+        // If it's the same plan as current, disable it
+        if (currentPlan.type === planType && isSameCycle) return true;
+        
+        return false;
+    }
 
     // Handle payment redirect
     const handlePaymentRedirect = () => {
-        // Get the plan amount based on selection
-        const amount = selectedDuration === "yearly" 
-            ? calculateTotalPrice(selectedPlan, "yearly") 
-            : prices.monthly[selectedPlan];
-        
-        // Get plan name for transaction description
-        const planName = plans[selectedPlan].name;
-        
-        // Create query parameters for payment page
-        const queryParams = new URLSearchParams({
-            plan: selectedPlan,
-            duration: selectedDuration,
-            amount: amount.toString(),
-            description: `${planName} Plan - ${selectedDuration === "yearly" ? "Annual" : "Monthly"} Subscription`
-        }).toString();
-        
-        // Navigate to payment page with query parameters
-        router.push(`/payment?${queryParams}`);
+        try {
+            // Force a refresh of subscription data before redirecting to payment
+            if (user?.id) {
+                // First reset any stale subscription data
+                console.log("Resetting subscription state before payment redirect");
+                forceSubscriptionRefresh();
+            }
+            
+            // Get the plan amount based on selection
+            const amount = selectedDuration === "yearly" 
+                ? calculateTotalPrice(selectedPlan, "yearly") 
+                : prices.monthly[selectedPlan];
+            
+            // Get plan name for transaction description
+            const planName = plans[selectedPlan].name;
+            
+            // Create query parameters for payment page
+            const queryParams = new URLSearchParams({
+                plan: selectedPlan,
+                duration: selectedDuration,
+                amount: amount.toString(),
+                description: `${planName} Plan - ${selectedDuration === "yearly" ? "Annual" : "Monthly"} Subscription`
+            }).toString();
+            
+            // Add a small delay to allow subscription refresh to complete
+            // This helps prevent state issues with the payment page
+            setTimeout(() => {
+                // Navigate to payment page with query parameters
+                router.push(`/payment?${queryParams}`);
+            }, 300);
+        } catch (error) {
+            console.error("Error redirecting to payment:", error);
+            // Try direct navigation even if there was an error
+            const amount = selectedDuration === "yearly" 
+                ? calculateTotalPrice(selectedPlan, "yearly") 
+                : prices.monthly[selectedPlan];
+            
+            const planName = plans[selectedPlan].name;
+            const queryParams = new URLSearchParams({
+                plan: selectedPlan,
+                duration: selectedDuration,
+                amount: amount.toString(),
+                description: `${planName} Plan - ${selectedDuration === "yearly" ? "Annual" : "Monthly"} Subscription`
+            }).toString();
+            
+            router.push(`/payment?${queryParams}`);
+        }
     };
 
     return (
@@ -193,21 +429,20 @@ export default function UpgradePage() {
                 <div className="flex items-center justify-between">
                     <h1 className="text-xl font-medium text-gray-900">Upgrade Plan</h1>
                     <div className="flex items-center">
-                        <Button variant="ghost" size="sm" className="text-xs h-8 px-3 rounded-sm text-gray-600 hover:bg-gray-100">
-                            <Clock className="h-3.5 w-3.5 mr-1.5" />
-                            Billing History
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-xs h-8 px-3 rounded-sm text-gray-600 hover:bg-gray-100">
-                            <CreditCard className="h-3.5 w-3.5 mr-1.5" />
-                            Payment Methods
-                        </Button>
+                        <Link href="/dashboard/billing-history">
+                            <Button variant="ghost" size="sm" className="text-xs h-8 px-3 rounded-sm text-gray-600 hover:bg-gray-100">
+                                <Clock className="h-3.5 w-3.5 mr-1.5" />
+                                Billing History
+                            </Button>
+                        </Link>
+                        <PaymentMethodsSheet />
                     </div>
                 </div>
                 <p className="text-gray-500 text-xs mt-1">Upgrade your plan to get more features and longer protection.</p>
             </div>
 
             {/* Subscription Status Message */}
-            <Card className="p-6 mb-8 border">
+            <Card className="p-6 mb-8 bg-gray-50 border-0">
                 {isFreePlan() ? (
                     <div className="flex flex-col md:flex-row md:items-center gap-4">
                         <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
@@ -261,7 +496,10 @@ export default function UpgradePage() {
                                 }`}>
                                     ACTIVE
                                 </Badge>
-                                <span className="text-sm text-gray-500">Your plan selection is highlighted below</span>
+                                <span className="text-sm text-gray-500">
+                                    {currentBillingCycle ? `${currentBillingCycle.charAt(0).toUpperCase() + currentBillingCycle.slice(1)} billing` : 'Your plan'} 
+                                    - selection is highlighted below
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -274,7 +512,9 @@ export default function UpgradePage() {
                     <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Current Billing Cycle</div>
                     <div className="flex items-center">
                         <Calendar className="h-3.5 w-3.5 text-emerald-600 mr-1.5" />
-                        <span className="text-sm font-medium">Monthly</span>
+                        <span className="text-sm font-medium">{currentBillingCycle ? 
+                            currentBillingCycle.charAt(0).toUpperCase() + currentBillingCycle.slice(1) : 
+                            "Monthly"}</span>
                     </div>
                 </div>
 
@@ -389,9 +629,11 @@ export default function UpgradePage() {
                                     : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                             }`}
                             onClick={() => setSelectedPlan("individual")}
+                            disabled={isPlanDisabled("individual")}
                         >
-                            {selectedPlan === "individual" && currentPlan.type === "individual" ? "Current Plan" : 
-                             selectedPlan === "individual" ? "Selected" : "Select Plan"}
+                            {selectedPlan === "individual" && currentPlan.type === "individual" && isSameCycle 
+                                ? `Current ${currentBillingCycle} Plan` 
+                                : selectedPlan === "individual" ? "Selected" : "Select Plan"}
                         </Button>
 
                         <div className="text-xs text-gray-500 mt-3 text-center">
@@ -460,9 +702,11 @@ export default function UpgradePage() {
                                     : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                             }`}
                             onClick={() => setSelectedPlan("basic")}
+                            disabled={isPlanDisabled("basic")}
                         >
-                            {selectedPlan === "basic" && currentPlan.type === "basic" ? "Current Plan" : 
-                             selectedPlan === "basic" ? "Selected" : "Select Plan"}
+                            {selectedPlan === "basic" && currentPlan.type === "basic" && isSameCycle 
+                                ? `Current ${currentBillingCycle} Plan` 
+                                : selectedPlan === "basic" ? "Selected" : "Select Plan"}
                         </Button>
 
                         <div className="text-xs text-gray-500 mt-3 text-center">
@@ -534,9 +778,11 @@ export default function UpgradePage() {
                                     : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                             }`}
                             onClick={() => setSelectedPlan("premium")}
+                            disabled={isPlanDisabled("premium")}
                         >
-                            {selectedPlan === "premium" && currentPlan.type === "premium" ? "Current Plan" : 
-                             selectedPlan === "premium" ? "Selected" : "Select Plan"}
+                            {selectedPlan === "premium" && currentPlan.type === "premium" && isSameCycle 
+                                ? `Current ${currentBillingCycle} Plan` 
+                                : selectedPlan === "premium" ? "Selected" : "Select Plan"}
                         </Button>
 
                         <div className="text-xs text-gray-500 mt-3 text-center">
@@ -565,8 +811,11 @@ export default function UpgradePage() {
                 <Button 
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-6"
                     onClick={handlePaymentRedirect}
+                    disabled={currentPlan.type === selectedPlan && isSameCycle}
                 >
-                    {currentPlan.type === selectedPlan ? "Update Payment Method" : "Proceed to Payment"}
+                    {currentPlan.type === selectedPlan && isSameCycle 
+                        ? `Current ${currentBillingCycle} Plan - Cannot Upgrade` 
+                        : "Proceed to Payment"}
                 </Button>
                 
                 <p className="text-xs text-gray-500 mt-3 text-center">

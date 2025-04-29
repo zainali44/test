@@ -25,7 +25,7 @@ const navItems = [
   },
   {
     title: "VPN for Teams",
-    href: "#",
+    href: "/coming-soon",
   },
   {
     title: "Help",
@@ -83,8 +83,8 @@ export default function Navbar() {
     <>
       <div
         className={cn(
-          "fixed top-0 left-0 right-0 z-50 px-4 md:px-8 transition-all duration-500 flex justify-center",
-          scrolled ? "py-3" : "py-8",
+          "fixed top-0 left-0 right-0 z-50 px-2 sm:px-4 md:px-8 transition-all duration-500 flex justify-center",
+          scrolled ? "py-2 sm:py-3" : "py-12 sm:py-8",
         )}
       >
         <motion.header
@@ -312,7 +312,7 @@ export default function Navbar() {
                 : "bg-gradient-to-b from-purple-950 to-purple-900/95 backdrop-blur-md border-t border-purple-800/30",
             )}
           >
-            <div className="p-6 flex flex-col gap-4">
+            <div className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-4">
               <nav className="flex flex-col gap-3">
                 {navItems.map((item, index) => (
                   <motion.div
@@ -413,7 +413,7 @@ export default function Navbar() {
                         <Button 
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-base py-6",
+                            "w-full justify-start text-base py-4 sm:py-6",
                             scrolled 
                               ? "border-gray-200 text-gray-700" 
                               : "border-white/20 text-white"
@@ -440,7 +440,7 @@ export default function Navbar() {
                       <Button 
                         variant="destructive"
                         onClick={logout}
-                        className="w-full text-white py-6 text-base"
+                        className="w-full text-white py-4 sm:py-6 text-base"
                       >
                         <LogOut className="h-4 w-4 mr-2" />
                         Logout
@@ -488,7 +488,7 @@ export default function Navbar() {
                       }}
                       exit={{ y: 20, opacity: 0 }}
                     >
-                      <Button className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white py-6 text-base">
+                      <Button className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white py-4 sm:py-6 text-base">
                         Get CREST VPN
                       </Button>
                     </motion.div>

@@ -3,26 +3,47 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Download, Info, Shield, Check, ExternalLink } from "lucide-react"
+import { Download, Info, Shield, Check, ExternalLink, Lock, Unlock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/app/contexts/auth-context"
 import { UpgradeDialog } from "@/components/upgrade-dialog"
+import { useSubscription } from "@/app/contexts/subscription-context"
 
 export default function DownloadsPage() {
   const { user } = useAuth()
+  const { subscription } = useSubscription()
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
   const [selectedDownload, setSelectedDownload] = useState("")
 
   // Check if user has a free plan
   const isFreePlan = () => {
+    // Check from subscription state
+    if (subscription) {
+      // Handle case where subscription is wrapped in data property
+      const subscriptionData = (subscription as any).data || subscription;
+      
+      // Check if it's a free plan (plan_id=1)
+      if ('plan_id' in subscriptionData) {
+        return subscriptionData.plan_id === 1;
+      }
+      
+      // API subscription with Plan object
+      if ('Plan' in subscriptionData && subscriptionData.Plan) {
+        return subscriptionData.Plan.name.toLowerCase() === 'free';
+      }
+    }
+    
+    // Check from user data
     if (!user || !user.subscriptions || !Array.isArray(user.subscriptions) || user.subscriptions.length === 0) {
       return true
     }
     
     const activeSubscription = user.subscriptions.find(sub => sub.status === 'active')
-    return !activeSubscription || activeSubscription.plan?.name === 'Free'
+    return !activeSubscription || 
+           activeSubscription.plan_id === 1 || 
+           activeSubscription.plan?.name.toLowerCase() === 'free';
   }
 
   const handleDownload = (platform: string) => {
@@ -37,13 +58,37 @@ export default function DownloadsPage() {
     console.log(`Downloading for ${platform}`)
     // You could also track downloads with analytics here
     // Here you'd implement the actual download logic
+    
+    // Example download URL construction based on platform
+    let downloadUrl = "";
+    switch(platform) {
+      case "Windows":
+        downloadUrl = "/downloads/securevpn-windows-latest.exe";
+        break;
+      case "Android":
+        downloadUrl = "/downloads/securevpn-android-latest.apk";
+        break;
+      case "OpenVPN Config":
+        downloadUrl = "/downloads/securevpn-openvpn-configs.zip";
+        break;
+      default:
+        downloadUrl = "#";
+    }
+    
+    // In a real implementation, you'd trigger the actual download
+    // window.location.href = downloadUrl;
   }
+
+  // Animation classes
+  const lockAnimation = "transition-all duration-300 group-hover:scale-110"
+  const unlockAnimation = "transition-all duration-300 group-hover:rotate-12"
+  const buttonAnimation = "transition-transform duration-200 group-hover:scale-[1.02]"
 
   return (
     <div className="container mx-auto p-6 space-y-8">
       <div className="text-center max-w-3xl mx-auto mb-8">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-          Download SecureVPN
+          Download CREST VPN
         </h1>
         <p className="text-muted-foreground mt-3">
           Secure your connection on any device with our high-speed, privacy-focused VPN applications
@@ -55,7 +100,7 @@ export default function DownloadsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2">
           <div className="p-8 flex flex-col justify-center">
             <Badge className="w-fit mb-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100">RECOMMENDED</Badge>
-            <h2 className="text-2xl font-bold mb-2">SecureVPN for Windows</h2>
+            <h2 className="text-2xl font-bold mb-2">CrestVPN for Windows</h2>
             <p className="text-muted-foreground mb-4">
               Our flagship Windows application with advanced features and the highest level of encryption.
             </p>
@@ -84,10 +129,14 @@ export default function DownloadsPage() {
             <div className="flex flex-wrap gap-3">
               <Button
                 onClick={() => handleDownload("Windows")}
-                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-full text-white"
+                className={`group bg-gradient-to-r ${isFreePlan() ? "from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700" : "from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"} rounded-full text-white ${buttonAnimation}`}
               >
-                <Download className="mr-2 h-4 w-4" />
-                Download Now
+                {isFreePlan() ? (
+                  <Lock className={`mr-2 h-4 w-4 ${lockAnimation}`} />
+                ) : (
+                  <Unlock className={`mr-2 h-4 w-4 ${unlockAnimation}`} />
+                )}
+                {isFreePlan() ? "Premium Feature" : "Download Now"}
               </Button>
               <Button variant="outline" className="rounded-full">
                 <Info className="mr-2 h-4 w-4" />
@@ -183,10 +232,14 @@ export default function DownloadsPage() {
               <Button
                 onClick={() => handleDownload("OpenVPN Config")}
                 variant="outline"
-                className="border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                className={`group border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 ${buttonAnimation}`}
               >
-                <Download className="mr-2 h-4 w-4" />
-                OpenVPN Config Files
+                {isFreePlan() ? (
+                  <Lock className={`mr-2 h-4 w-4 ${lockAnimation}`} />
+                ) : (
+                  <Unlock className={`mr-2 h-4 w-4 ${unlockAnimation}`} />
+                )}
+                {isFreePlan() ? "Premium Feature" : "OpenVPN Config Files"}
               </Button>
             </div>
           </div>
@@ -249,6 +302,34 @@ function DownloadCard({
   variants,
   storeLink,
 }: DownloadCardProps) {
+  const { subscription } = useSubscription()
+  
+  // Check if user has a free plan - reusing the logic from the parent component
+  const isLocked = () => {
+    // Check from subscription state
+    if (subscription) {
+      // Handle case where subscription is wrapped in data property
+      const subscriptionData = (subscription as any).data || subscription;
+      
+      // Check if it's a free plan (plan_id=1)
+      if ('plan_id' in subscriptionData) {
+        return subscriptionData.plan_id === 1;
+      }
+      
+      // API subscription with Plan object
+      if ('Plan' in subscriptionData && subscriptionData.Plan) {
+        return subscriptionData.Plan.name.toLowerCase() === 'free';
+      }
+    }
+    
+    return true;
+  }
+
+  // Animation classes
+  const lockAnimation = "transition-all duration-300 group-hover:scale-110"
+  const unlockAnimation = "transition-all duration-300 group-hover:rotate-12"
+  const buttonAnimation = "transition-transform duration-200 group-hover:scale-[1.02]"
+
   return (
     <div className="bg-white border border-gray-300 rounded-lg overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow">
       <div className="p-5 flex-1 flex flex-col">
@@ -275,22 +356,33 @@ function DownloadCard({
                   onClick={variant.onClick}
                   className={
                     i === 0
-                      ? "w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
-                      : "w-full border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 "
+                      ? `group w-full ${isLocked() ? "bg-gray-500 hover:bg-gray-600" : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"} text-white ${buttonAnimation}`
+                      : "w-full border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                   }
                   variant={i === 0 ? "default" : "outline"}
                 >
-                  {variant.name}
+                  {i === 0 && isLocked() ? (
+                    <Lock className={`mr-2 h-4 w-4 ${lockAnimation}`} />
+                  ) : (
+                    <>{i === 0 ? (
+                      isLocked() ? null : <Unlock className={`mr-2 h-4 w-4 ${unlockAnimation}`} />
+                    ) : null}</>
+                  )}
+                  {i === 0 && isLocked() ? "Premium Feature" : variant.name}
                 </Button>
               ))}
             </div>
           ) : (
             <Button
               onClick={onDownload}
-              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+              className={`group w-full ${isLocked() ? "bg-gray-500 hover:bg-gray-600" : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"} text-white ${buttonAnimation}`}
             >
-              <Download className="mr-2 h-4 w-4" />
-              Download
+              {isLocked() ? (
+                <Lock className={`mr-2 h-4 w-4 ${lockAnimation}`} />
+              ) : (
+                <Unlock className={`mr-2 h-4 w-4 ${unlockAnimation}`} />
+              )}
+              {isLocked() ? "Premium Feature" : "Download"}
             </Button>
           )}
 

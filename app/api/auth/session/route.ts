@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { ApiResponse } from "@/app/utils/auth"
 import { getCurrentUser } from "@/app/utils/server-auth"
+import { useAuth } from "@/app/contexts/auth-context"
 
 // Force this route to be dynamically rendered
 export const dynamic = "force-dynamic"
@@ -8,7 +9,18 @@ export const dynamic = "force-dynamic"
 export async function GET() {
   try {
     // Get current user from auth cookie
-    const user = getCurrentUser()
+    const { user } = useAuth();
+
+    if (!user) {
+      return NextResponse.json(
+        { 
+          status: "error", 
+          message: "No active session", 
+          data: { authenticated: false } 
+        } as ApiResponse,
+        { status: 401 }
+      )
+    }
 
     // If no active session
     if (!user) {

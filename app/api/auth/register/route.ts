@@ -36,9 +36,13 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      // Make sure the URL has a trailing slash before appending 'users'
+      const apiUrl = process.env.NEXTAPI_URL || '';
+      const formattedApiUrl = apiUrl.endsWith('/') ? apiUrl + 'users/create' : apiUrl + '/users/create';
+      
       // Call external registration API
-      console.log("Attempting to call external API at: ", process.env.NEXTAPI_URL);
-      const response = await fetch(`${process.env.NEXTAPI_URL}users`, {
+      console.log("Attempting to call external API at:", formattedApiUrl);
+      const response = await fetch(formattedApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,7 +70,12 @@ export async function POST(request: NextRequest) {
       try {
         // After successful registration, call login API to get token
         console.log("Registration successful. Attempting login...");
-        const loginResponse = await fetch(`${process.env.NEXTAPI_URL}/login`, {
+        
+        // Ensure the login URL is properly formatted
+        const loginUrl = apiUrl.endsWith('/') ? apiUrl + 'login' : apiUrl + '/login';
+        console.log("Login URL:", loginUrl);
+        
+        const loginResponse = await fetch(loginUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -82,11 +91,11 @@ export async function POST(request: NextRequest) {
 
         if (!loginResponse.ok) {
           // Registration succeeded but login failed
-          console.log("Automatic login failed after successful registration");
+          console.log("Login failed after successful registration");
           return NextResponse.json(
             { 
               status: "success", 
-              message: "User created successfully, but automatic login failed",
+              message: "User created successfully. Please check your email for a verification link.",
               data: { user: { id: data.id, name, email } } 
             } as ApiResponse,
             { status: 201 }
@@ -99,10 +108,11 @@ export async function POST(request: NextRequest) {
           console.error("No token received from login API");
           return NextResponse.json(
             { 
-              status: "error", 
-              message: "Failed to get authentication token" 
+              status: "success", 
+              message: "User created successfully. Please check your email for a verification link.",
+              data: { user: { id: data.id, name, email } } 
             } as ApiResponse,
-            { status: 500 }
+            { status: 201 }
           )
         }
         
@@ -116,6 +126,7 @@ export async function POST(request: NextRequest) {
         const response = NextResponse.json(
           { 
             status: "success", 
+            message: "Registration successful. Please check your email for a verification link.",
             data: { token, user: { id: data.id, name, email } } 
           } as ApiResponse,
           { status: 201 }
@@ -123,6 +134,7 @@ export async function POST(request: NextRequest) {
         
         console.log("Final response:", { 
           status: "success", 
+          message: "Registration successful. Please check your email for a verification link.",
           data: { token: "***", user: { id: data.id, name, email } } 
         });
         
@@ -131,10 +143,11 @@ export async function POST(request: NextRequest) {
         console.error("Error during automatic login:", loginError);
         return NextResponse.json(
           { 
-            status: "error", 
-            message: "User created but automatic login failed" 
+            status: "success", 
+            message: "User created successfully. Please check your email for a verification link.",
+            data: { user: { id: data.id, name, email } } 
           } as ApiResponse,
-          { status: 500 }
+          { status: 201 }
         )
       }
     } catch (apiError) {

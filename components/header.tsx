@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bell, Search, ChevronDown, Menu, LogOut, User, Settings, CreditCard } from "lucide-react"
+import { LogOut, User, Settings, CreditCard, Menu, Shield } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,13 +13,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
 import { useSidebar } from "@/hooks/use-sidebar"
 import { useAuth } from "@/app/contexts/auth-context"
 import { useRouter } from "next/navigation"
 
 export default function Header() {
-  const [notifications, setNotifications] = useState(3)
   const { toggleSidebar } = useSidebar()
   const { user, logout } = useAuth()
   const router = useRouter()
@@ -86,7 +85,7 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white border-b border-gray-100 h-16 flex items-center justify-between px-6 sticky top-0 z-10">
+    <header className="bg-white border-b border-gray-100 h-16 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20 shadow-sm">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -96,50 +95,52 @@ export default function Header() {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        {/* <div className="relative hidden md:flex items-center">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            type="search"
-            placeholder="Search..."
-            className="pl-10 w-[240px] h-9 bg-gray-50 border-gray-100 focus:bg-white"
-          />
-        </div> */}
+        <div className="md:hidden flex items-center">
+          <Link href="/dashboard" className="flex items-center">
+            <div className="h-8 w-8 rounded-md bg-gradient-to-r from-emerald-600 to-teal-500 flex items-center justify-center">
+              <Shield className="h-4 w-4 text-white" />
+            </div>
+          </Link>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        
-
+      <div className="flex items-center gap-2 md:gap-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 h-9 px-2">
-              <Avatar className="h-8 w-8 bg-purple-100">
+            <Button variant="ghost" className="flex items-center gap-2 h-9 px-2 rounded-full hover:bg-gray-100">
+              <Avatar className="h-8 w-8 border border-gray-200">
                 <AvatarImage src="" alt="User" />
-                <AvatarFallback className="bg-purple-600 text-white">{initials}</AvatarFallback>
+                <AvatarFallback className="bg-emerald-600 text-white font-medium">{initials}</AvatarFallback>
               </Avatar>
-              <div className="flex flex-col items-start text-sm">
+              <div className="hidden md:flex flex-col items-start text-sm">
                 <span className="font-medium">{name}</span>
                 <span className="text-xs text-gray-500">{email}</span>
               </div>
-              <ChevronDown className="h-4 w-4 text-gray-500" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 bg-white border border-gray-100">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer">
-              <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+          <DropdownMenuContent align="end" className="w-56 bg-white border border-gray-100 rounded-xl p-1">
+            <DropdownMenuLabel className="px-2 py-1.5 text-sm text-gray-500">My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator className="my-1" />
+            <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
+              <Link href="/dashboard/profile" className="flex items-center px-2 py-1.5">
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">
-              <CreditCard className="mr-2 h-4 w-4" />
-              <span>Billing</span>
+            <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
+              <Link href="/dashboard/billing-history" className="flex items-center px-2 py-1.5">
+                <CreditCard className="mr-2 h-4 w-4" />
+                <span>Billing</span>
+              </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+            <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
+              <Link href="/dashboard/settings" className="flex items-center px-2 py-1.5">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </Link>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer text-red-600" onClick={handleLogout}>
+            <DropdownMenuSeparator className="my-1" />
+            <DropdownMenuItem className="cursor-pointer text-red-600 rounded-lg" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>

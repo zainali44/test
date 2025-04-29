@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Check, Edit2, ExternalLink, Lock, Mail, Shield, Upload, X, User, UserCircle, Zap, Settings, CreditCard, Calendar, Copy, AlertCircle } from "lucide-react"
+import { Check, Edit2, ExternalLink, Lock, Mail, Shield, Upload, X, User as UserIcon, UserCircle, Zap, Settings, CreditCard, Calendar, Copy, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -12,9 +12,26 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/app/contexts/auth-context"
 import { useSubscription } from "@/app/contexts/subscription-context"
 import Link from "next/link"
+import { User } from "@/app/utils/auth"
+
+// Extend the User interface for our additional properties
+interface ExtendedUser extends User {
+  profilePicture?: string;
+  created_at?: string | Date;
+}
+
+interface Transaction {
+  transaction_id?: string;
+  amount: string | number;
+  created_at?: string | Date;
+  date?: string | Date;
+  description?: string;
+  order_date?: string | Date;
+  payment_name?: string;
+}
 
 export default function ProfilePage() {
-  const { user } = useAuth()
+  const { user } = useAuth() as { user: ExtendedUser | null };
   const { subscription, fetchSubscription, loading: subLoading } = useSubscription()
   const router = useRouter()
   const [isEditing, setIsEditing] = useState<string | null>(null)
@@ -187,7 +204,7 @@ export default function ProfilePage() {
   const planDetails = getPlanDetails()
   
   // Format date for display
-  const formatDate = (dateString: string | number | Date) => {
+  const formatDate = (dateString?: string | number | Date): string => {
     if (!dateString) return 'N/A'
     
     const date = new Date(dateString)
@@ -224,7 +241,7 @@ export default function ProfilePage() {
   }
 
   // Get transaction history
-  const getTransactions = () => {
+  const getTransactions = (): Transaction[] => {
     if (!subscription) {
       return [];
     }
@@ -291,329 +308,285 @@ export default function ProfilePage() {
   const subscriptionEndDate = getSubscriptionEndDate()
 
   return (
-    <div className="container max-w-4xl py-6 pb-16">
-      {showConfetti && (
-        <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-          {/* Simple CSS confetti effect would go here */}
-        </div>
-      )}
-      
-      <div className="flex flex-col space-y-6">
-        {/* User profile header */}
-        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="h-16 w-16 rounded-full overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 p-0.5">
-                  <div className="h-full w-full rounded-full overflow-hidden bg-white">
-                    <div className="h-full w-full flex items-center justify-center bg-gray-100 text-gray-500">
-                      <User className="h-8 w-8" />
-                    </div>
-                  </div>
+    <div className="container p-0 mx-auto space-y-6">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+            <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-100 flex items-center justify-center">
+              {user?.profilePicture ? (
+                <Image 
+                  src={user.profilePicture} 
+                  alt="Profile" 
+                  fill 
+                  className="object-cover" 
+                />
+              ) : (
+                <UserCircle className="w-12 h-12 md:w-14 md:h-14 text-emerald-300" />
+              )}
+            </div>
+            
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-2">
+                <div>
+                  <h1 className="text-xl md:text-2xl font-bold">
+                    {user?.name || (user?.email ? user.email.split('@')[0] : 'User')}
+                  </h1>
+                  <p className="text-sm text-gray-500 mt-1">{user?.email || 'No email available'}</p>
                 </div>
-                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1">
-                  <div className={`rounded-full p-1 ${
+                
+                <div className="flex items-center gap-2 mt-3 md:mt-0 md:ml-auto">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs h-8 rounded-md border-gray-200 hover:bg-gray-50"
+                    onClick={() => setIsEditing('name')}
+                  >
+                    <Edit2 className="mr-1 h-3 w-3" />
+                    Edit Profile
+                  </Button>
+                  
+                  <Badge className={`py-1 px-3 rounded-full text-xs ${
                     planDetails.type === 'Premium' 
-                      ? 'bg-purple-500' 
+                      ? 'bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 hover:from-amber-200 hover:to-amber-300 border-0'
                       : planDetails.type === 'Basic'
-                        ? 'bg-emerald-500'
-                        : planDetails.type === 'Free'
-                          ? 'bg-gray-400'
-                          : 'bg-blue-500'
+                      ? 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-700 hover:from-emerald-200 hover:to-emerald-300 border-0'
+                      : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300 border-0'
                   }`}>
-                    <Shield className="h-3 w-3 text-white" />
-                  </div>
+                    {planDetails.name}
+                  </Badge>
                 </div>
               </div>
               
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-sm text-gray-500">@{username}</p>
-                  <Badge variant="outline" className={`text-xs ${
-                    planDetails.type === 'Premium' 
-                      ? 'bg-purple-50 text-purple-700 border-purple-200' 
-                      : planDetails.type === 'Basic'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                        : planDetails.type === 'Free'
-                          ? 'bg-gray-50 text-gray-700 border-gray-200'
-                          : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }`}>
-                    {planName}
-                  </Badge>
+              {emailVerified ? (
+                <div className="flex items-center mt-2 text-emerald-600 text-xs">
+                  <Check className="h-3 w-3 mr-1" />
+                  Email verified
                 </div>
-              </div>
-            </div>
-            
-            <Button
-              size="sm"
-              className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
-          </div>
-        </div>
-
-        {!emailVerified && (
-          <div className="bg-amber-50 rounded-lg overflow-hidden">
-            <div className="p-4 sm:p-5">
-              <div className="flex items-start gap-4">
-                <div className="bg-amber-100 rounded-full p-2 mt-0.5 shrink-0">
-                  <Mail className="h-4 w-4 text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium text-amber-800 text-base">Verify your email address</h3>
-                  <p className="text-amber-700 mt-1 text-sm">For account security, please confirm your email address with the 6-digit verification code we sent to {userEmail}</p>
-
-                  <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <div className="flex gap-1.5">
-                      {verificationCode.map((digit, index) => (
-                        <Input
-                          key={index}
-                          id={`code-${index}`}
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={1}
-                          value={digit}
-                          onChange={(e) => handleCodeChange(index, e.target.value)}
-                          className="w-8 h-10 text-center p-0 text-sm font-medium border-gray-200"
-                        />
-                      ))}
-                    </div>
-                    <Button
-                      onClick={handleVerifyEmail}
-                      size="sm"
-                      className="bg-amber-500 hover:bg-amber-600 text-white"
-                    >
-                      Verify
-                    </Button>
-                  </div>
-                  
-                  <div className="mt-2 text-amber-700 text-xs">
-                    <button className="text-amber-800 hover:text-amber-900 underline underline-offset-2 font-medium">
-                      Resend code
-                    </button>
-                    {" or "}
-                    <button className="text-amber-800 hover:text-amber-900 underline underline-offset-2 font-medium">
-                      Change email
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Account Information */}
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="p-4 sm:p-5 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <UserCircle className="h-5 w-5 text-emerald-600" />
-                <h2 className="text-lg font-medium text-gray-900">Account Information</h2>
-              </div>
-              <Badge variant="outline" className={`text-xs ${
-                isPaid 
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                  : 'bg-gray-50 text-gray-700 border-gray-200'
-              }`}>
-                <Zap className="h-3 w-3 mr-1" /> {planName}
-              </Badge>
-            </div>
-          </div>
-
-          <div className="p-4 sm:p-5 space-y-4">
-            {/* Email Address */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-600">Email Address</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Your contact and login email</p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-900 font-medium">{userEmail}</span>
-                {emailVerified && (
-                  <Badge variant="outline" className="text-xs bg-green-50 text-emerald-700 border-green-200">
-                    <Check className="h-3 w-3 mr-1" /> Verified
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            <Separator className="bg-gray-100" />
-
-            {/* Account ID */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-600">Account ID</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Your unique account identifier</p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-900 font-medium">{user?.id || '14'}</span>
+              ) : (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
-                  onClick={() => navigator.clipboard.writeText(user?.id || '14')}
+                  className="mt-3 md:mt-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 h-7 rounded-md"
+                  onClick={handleVerifyEmail}
                 >
-                  <Copy className="h-3.5 w-3.5" />
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Verify Email
                 </Button>
+              )}
+            </div>
+          </div>
+          
+          {isEditing === 'name' && (
+            <div className="mt-4 p-4 rounded-lg bg-gray-50">
+              <div className="flex flex-col space-y-3">
+                <div>
+                  <label htmlFor="name" className="text-sm font-medium text-gray-700 mb-1 block">
+                    Display Name
+                  </label>
+                  <Input 
+                    id="name" 
+                    defaultValue={user?.name || ''} 
+                    placeholder="Enter your name"
+                    className="h-9"
+                  />
+                </div>
+                
+                <div className="flex justify-end gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 text-xs"
+                    onClick={() => setIsEditing(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    Save Changes
+                  </Button>
+                </div>
               </div>
             </div>
-
-            <Separator className="bg-gray-100" />
-
-            {/* Subscription Details */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-600">Subscription Plan</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Your current plan and benefits</p>
+          )}
+        </div>
+        
+        <div className="px-4 md:px-6 pb-4 md:pb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center mb-3">
+                <Mail className="h-4 w-4 text-gray-500 mr-2" />
+                <h3 className="text-sm font-medium">Email Address</h3>
               </div>
-
-              <div className="flex items-center gap-3">
-                <div className={`px-2.5 py-1 rounded-full text-xs ${
-                  planDetails.type === 'Premium' 
-                    ? 'bg-purple-50 text-purple-700' 
-                    : planDetails.type === 'Basic' 
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : planDetails.type === 'Free'
-                        ? 'bg-gray-100 text-gray-700'
-                        : 'bg-blue-50 text-blue-700'
-                }`}>
-                  <span className="font-medium">{planDetails.name}</span>
-                </div>
-                
-                <Button
-                  size="sm"
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white h-7 text-xs"
-                  asChild
-                >
-                  <Link href="/dashboard/upgrade">
-                    {isPaid ? "Manage" : "Upgrade"}
-                  </Link>
-                </Button>
+              <p className="text-sm break-all">{user?.email || 'Not available'}</p>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center mb-3">
+                <Calendar className="h-4 w-4 text-gray-500 mr-2" />
+                <h3 className="text-sm font-medium">Member Since</h3>
+              </div>
+              <p className="text-sm">{user?.created_at ? formatDate(user.created_at) : 'N/A'}</p>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center mb-3">
+                <Zap className="h-4 w-4 text-gray-500 mr-2" />
+                <h3 className="text-sm font-medium">Account Status</h3>
+              </div>
+              <div className="flex items-center">
+                <Badge className="rounded-full bg-emerald-100 text-emerald-700 border-0 text-xs">
+                  Active
+                </Badge>
               </div>
             </div>
-
-            {/* Subscription Status - Show only if user has a subscription */}
-            {subscription && subscription.status && (
-              <>
-                <Separator className="bg-gray-100" />
-                
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Subscription Status</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Current status and renewal date</p>
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-end">
-                      <Badge variant="outline" className={`text-xs
-                        ${subscription.status === 'active' 
-                          ? 'bg-green-50 text-emerald-700 border-green-200' 
-                          : 'bg-amber-50 text-amber-700 border-amber-200'}`}
-                      >
-                        {subscription.status === 'active' ? 'Active' : 'Inactive'}
-                      </Badge>
-                      <div className="flex items-center text-xs text-gray-600 mt-0.5">
-                        <Calendar className="h-3 w-3 mr-1 text-gray-400" />
-                        {subscription.status === 'active' 
-                          ? `Renews: ${subscriptionEndDate}` 
-                          : `Expired: ${subscriptionEndDate}`}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Transaction History - Show only for paid plans with transactions */}
-            {isPaid && transactions.length > 0 && (
-              <>
-                <Separator className="bg-gray-100" />
-                
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Transaction History</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Your recent payment history</p>
-                  </div>
-                  
-                  <div className="w-full">
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Date
-                              </th>
-                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Amount
-                              </th>
-                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Payment
-                              </th>
-                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                ID
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200 text-xs">
-                            {transactions.map((transaction: any, index: number) => (
-                              <tr key={transaction.transaction_id || index} className="hover:bg-gray-50">
-                                <td className="px-3 py-2 text-gray-900">
-                                  {formatDate(transaction.order_date)}
-                                </td>
-                                <td className="px-3 py-2 text-gray-900">
-                                  PKR {parseFloat(transaction.transaction_amount).toLocaleString()}
-                                </td>
-                                <td className="px-3 py-2 text-gray-900">
-                                  {transaction.payment_name || 'Card'}
-                                </td>
-                                <td className="px-3 py-2 text-gray-500 font-mono">
-                                  {transaction.transaction_id && transaction.transaction_id.length > 8 
-                                    ? `${transaction.transaction_id.substring(0, 8)}...`
-                                    : transaction.transaction_id || 'N/A'}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
           </div>
         </div>
-
-        {/* Danger Zone */}
-        <div className="bg-white rounded-lg border border-red-100">
-          <div className="p-4 sm:p-5 border-b border-red-100">
-            <div className="flex items-center gap-2">
-              <div className="p-1 bg-red-100 rounded-full">
-                <AlertCircle className="h-4 w-4 text-red-600" />
+      </div>
+      
+      {/* Subscription Section */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-100">
+          <div className="flex items-center">
+            <CreditCard className="h-5 w-5 text-gray-500 mr-2" />
+            <h2 className="text-lg font-medium">Subscription</h2>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8 text-xs rounded-md border-emerald-100 text-emerald-700 hover:bg-emerald-50"
+            onClick={() => router.push('/dashboard/upgrade')}
+          >
+            Manage Plan
+          </Button>
+        </div>
+        
+        <div className="p-4 md:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium mb-2">Current Plan</h3>
+              <div className="flex items-center">
+                <Badge className={`py-1 px-3 rounded-full text-xs ${
+                  planDetails.type === 'Premium' 
+                    ? 'bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 border-0'
+                    : planDetails.type === 'Basic'
+                    ? 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-700 border-0'
+                    : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 border-0'
+                }`}>
+                  {planDetails.name}
+                </Badge>
               </div>
-              <h2 className="text-base font-medium text-red-600">Danger Zone</h2>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium mb-2">Next Billing Date</h3>
+              <p className="text-sm">{getSubscriptionEndDate()}</p>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium mb-2">Payment Method</h3>
+              {planDetails.type === 'Free' ? (
+                <p className="text-sm">No payment method</p>
+              ) : (
+                <div className="flex items-center">
+                  <span className="bg-gray-200 rounded p-1 mr-2">
+                    <CreditCard className="h-3 w-3 text-gray-700" />
+                  </span>
+                  <span className="text-sm">••••</span>
+                </div>
+              )}
             </div>
           </div>
-
-          <div className="p-4 sm:p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-medium text-gray-600">Delete Account</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Permanently delete your account and all data</p>
+          
+          {transactions.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-medium mb-3">Recent Transactions</h3>
+              <div className="rounded-lg border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {transactions.map((transaction, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs">
+                            {formatDate(transaction.created_at || transaction.date)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs">
+                            {transaction.description || `Payment for ${planDetails.name}`}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs text-right">
+                            ${typeof transaction.amount === 'string' 
+                              ? parseFloat(transaction.amount).toFixed(2) 
+                              : transaction.amount.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-
-              <Button
-                size="sm"
-                variant="outline"
-                className="sm:self-auto self-start text-red-600 border-red-200 hover:bg-red-50"
+              
+              <div className="mt-2 text-right">
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  className="text-xs h-8 px-0 text-emerald-600 hover:text-emerald-700"
+                  onClick={() => router.push('/dashboard/billing-history')}
+                >
+                  View All Transactions
+                  <ExternalLink className="ml-1 h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Account Security Section */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-100">
+          <div className="flex items-center">
+            <Shield className="h-5 w-5 text-gray-500 mr-2" />
+            <h2 className="text-lg font-medium">Account Security</h2>
+          </div>
+        </div>
+        
+        <div className="p-4 md:p-6">
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg bg-gray-50">
+              <div className="mb-3 sm:mb-0">
+                <h3 className="text-sm font-medium mb-1">Password</h3>
+                <p className="text-xs text-gray-500">Last changed: Never</p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 text-xs rounded-md"
+                onClick={() => setIsEditing('password')}
               >
-                Delete Account
+                Change Password
+              </Button>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg bg-gray-50">
+              <div className="mb-3 sm:mb-0">
+                <h3 className="text-sm font-medium mb-1">Two-Factor Authentication</h3>
+                <p className="text-xs text-gray-500">Add an extra layer of security to your account</p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="h-8 text-xs rounded-md border-amber-100 text-amber-600 hover:bg-amber-50"
+              >
+                <Lock className="mr-1.5 h-3 w-3" />
+                Set Up 2FA
               </Button>
             </div>
           </div>

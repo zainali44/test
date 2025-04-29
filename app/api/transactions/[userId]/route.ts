@@ -9,13 +9,15 @@ export async function GET(
   
   try {
     // Make the request to the external API
-    const response = await fetch(`${process.env.NEXTAPI_URL}/users/transactions/${userId}`, {
+    const response = await fetch(`${process.env.NEXTAPI_URL}users/transactions/${userId}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
     })
+
+    console.log("API URL", `${process.env.NEXTAPI_URL}/users/transactions/${userId}`)
     
     // If the response isn't OK, throw an error
     if (!response.ok) {

@@ -49,7 +49,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Build the API URL
-    const baseUrl = `${process.env.NEXTAPI_URL}/users/transactions/${userId}`;
+    const baseUrl = `${process.env.NEXTAPI_URL}users/transactions/${userId}`;
+    console.log("API URL", baseUrl)
     
     // Make the request to the external API
     const response = await fetch(baseUrl, {

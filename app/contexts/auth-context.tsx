@@ -18,7 +18,7 @@ interface AuthContextType {
   token: string | null
   loading: boolean
   error: string | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, redirectUrl?: string) => Promise<void>
   logout: () => Promise<void>
   checkAuth: () => Promise<boolean>
 }
@@ -45,7 +45,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initAuth()
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, redirectUrl?: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -82,8 +82,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Show success toast
         toast.success("Logged in successfully")
         
-        // Redirect to dashboard
-        router.push("/dashboard")
+        // Redirect to appropriate page (dashboard by default)
+        if (redirectUrl) {
+          router.push(redirectUrl)
+        } else {
+          router.push("/dashboard")
+        }
         return;
       }
 
@@ -97,8 +101,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Show success toast
         toast.success("Logged in successfully")
         
-        // Redirect to dashboard
-        router.push("/dashboard")
+        // Redirect to appropriate page (dashboard by default)
+        if (redirectUrl) {
+          router.push(redirectUrl)
+        } else {
+          router.push("/dashboard")
+        }
       }
     } catch (err: any) {
       setError(err.message || "Failed to login")

@@ -114,14 +114,7 @@ export default function Navbar() {
             >
               <Link href="/" className="flex items-center gap-2 group">
                 <div className="relative">
-                  <Shield
-                    className={cn(
-                      "h-8 w-8 transition-colors duration-300",
-                      scrolled
-                        ? "text-purple-700 group-hover:text-purple-800"
-                        : "text-white group-hover:text-purple-300",
-                    )}
-                  />
+                  <img src="/logo.png" alt="Crest Logo" className="w-8 h-8 object-contain p-0.5" />
                   <motion.div
                     className={cn(
                       "absolute inset-0 rounded-full blur-md -z-10",
@@ -246,259 +239,42 @@ export default function Navbar() {
               )}
             </motion.div>
 
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3, delay: 0.5 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className="lg:hidden relative"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              <div className="relative">
-                {mobileMenuOpen ? (
-                  <X className={scrolled ? "h-6 w-6 text-gray-700" : "h-6 w-6 text-white"} />
-                ) : (
-                  <Menu className={scrolled ? "h-6 w-6 text-gray-700" : "h-6 w-6 text-white"} />
-                )}
-                <motion.div
+            <div className="flex items-center gap-2 lg:hidden">
+              {!user && (
+                <Link href="/login">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={cn(
+                      "text-xs",
+                      scrolled
+                        ? "text-gray-700"
+                        : "text-white"
+                    )}
+                  >
+                    Login
+                  </Button>
+                </Link>
+              )}
+              
+              <Link href={user ? "/dashboard" : "#"}>
+                <Button
+                  size="sm"
                   className={cn(
-                    "absolute inset-0 rounded-full blur-md -z-10",
-                    scrolled ? "bg-purple-500/10" : "bg-purple-500/30",
+                    "text-xs bg-gradient-to-r",
+                    user
+                      ? "from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400"
+                      : "from-red-600 to-red-500 hover:from-red-500 hover:to-red-400",
+                    "text-white shadow-sm border-0 rounded-full px-4"
                   )}
-                  animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.3, 0.6, 0.3],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Number.POSITIVE_INFINITY,
-                    ease: "easeInOut",
-                  }}
-                />
-              </div>
-            </motion.button>
+                >
+                  {user ? "Dashboard" : "Get VPN"}
+                </Button>
+              </Link>
+            </div>
           </div>
         </motion.header>
       </div>
-
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{
-              opacity: 1,
-              height: "auto",
-              transition: {
-                height: {
-                  duration: 0.5,
-                  ease: [0.04, 0.62, 0.23, 0.98], // Custom easing for a smooth, lazy animation
-                },
-                opacity: { duration: 0.3 },
-              },
-            }}
-            exit={{
-              opacity: 0,
-              height: 0,
-              transition: {
-                height: { duration: 0.3 },
-                opacity: { duration: 0.2 },
-              },
-            }}
-            className={cn(
-              "fixed top-16 left-0 right-0 z-40 shadow-lg lg:hidden overflow-hidden",
-              scrolled
-                ? "bg-white border-t border-gray-200"
-                : "bg-gradient-to-b from-purple-950 to-purple-900/95 backdrop-blur-md border-t border-purple-800/30",
-            )}
-          >
-            <div className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-4">
-              <nav className="flex flex-col gap-3">
-                {navItems.map((item, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{
-                      x: 0,
-                      opacity: 1,
-                      transition: {
-                        delay: 0.1 * index,
-                        duration: 0.5,
-                        ease: "easeOut",
-                      },
-                    }}
-                    exit={{
-                      x: -20,
-                      opacity: 0,
-                      transition: {
-                        delay: 0.05 * index,
-                        duration: 0.3,
-                      },
-                    }}
-                  >
-                    <Link
-                      href={item.href}
-                      className={cn(
-                        "px-3 py-3 text-lg font-medium transition-colors flex items-center justify-between group",
-                        scrolled ? "text-gray-700 hover:text-gray-900" : "text-white/90 hover:text-white",
-                      )}
-                    >
-                      <span>{item.title}</span>
-                      <motion.div
-                        initial={{ width: 0 }}
-                        whileHover={{ width: "100%" }}
-                        transition={{ duration: 0.3 }}
-                        className={cn(
-                          "absolute bottom-0 left-0 h-0.5",
-                          scrolled
-                            ? "bg-gradient-to-r from-purple-700 to-transparent"
-                            : "bg-gradient-to-r from-purple-400 to-transparent",
-                        )}
-                      />
-                    </Link>
-                  </motion.div>
-                ))}
-              </nav>
-
-              <div className="flex flex-col gap-3 mt-4">
-                {user ? (
-                  <>
-                    <motion.div
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{
-                        y: 0,
-                        opacity: 1,
-                        transition: {
-                          delay: 0.4,
-                          duration: 0.5,
-                          ease: "easeOut",
-                        },
-                      }}
-                      exit={{ y: 20, opacity: 0 }}
-                      className={cn(
-                        "p-4 rounded-lg transition-all duration-300",
-                        scrolled ? "bg-gray-100" : "bg-white/10"
-                      )}
-                    >
-                      <div className="flex flex-col gap-1">
-                        <p className={cn(
-                          "font-medium",
-                          scrolled ? "text-gray-700" : "text-white"
-                        )}>
-                          {user.name || "Account"}
-                        </p>
-                        <p className={cn(
-                          "text-xs truncate",
-                          scrolled ? "text-gray-500" : "text-white/70"
-                        )}>
-                          {user.email}
-                        </p>
-                      </div>
-                    </motion.div>
-                    
-                    <motion.div
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{
-                        y: 0,
-                        opacity: 1,
-                        transition: {
-                          delay: 0.5,
-                          duration: 0.5,
-                          ease: "easeOut",
-                        },
-                      }}
-                      exit={{ y: 20, opacity: 0 }}
-                    >
-                      <Link href="/dashboard">
-                        <Button 
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-base py-4 sm:py-6",
-                            scrolled 
-                              ? "border-gray-200 text-gray-700" 
-                              : "border-white/20 text-white"
-                          )}
-                        >
-                          Dashboard
-                        </Button>
-                      </Link>
-                    </motion.div>
-                    
-                    <motion.div
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{
-                        y: 0,
-                        opacity: 1,
-                        transition: {
-                          delay: 0.6,
-                          duration: 0.5,
-                          ease: "easeOut",
-                        },
-                      }}
-                      exit={{ y: 20, opacity: 0 }}
-                    >
-                      <Button 
-                        variant="destructive"
-                        onClick={logout}
-                        className="w-full text-white py-4 sm:py-6 text-base"
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Logout
-                      </Button>
-                    </motion.div>
-                  </>
-                ) : (
-                  <>
-                    <motion.div
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{
-                        y: 0,
-                        opacity: 1,
-                        transition: {
-                          delay: 0.4,
-                          duration: 0.5,
-                          ease: "easeOut",
-                        },
-                      }}
-                      exit={{ y: 20, opacity: 0 }}
-                    >
-                      <Link
-                        href="/login"
-                        className={cn(
-                          "transition-all duration-300 text-xs",
-                          scrolled
-                            ? "text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400"
-                            : "text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40",
-                        )}
-                      >
-                        Login
-                      </Link>
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{
-                        y: 0,
-                        opacity: 1,
-                        transition: {
-                          delay: 0.5,
-                          duration: 0.5,
-                          ease: "easeOut",
-                        },
-                      }}
-                      exit={{ y: 20, opacity: 0 }}
-                    >
-                      <Button className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white py-4 sm:py-6 text-base">
-                        Get CREST VPN
-                      </Button>
-                    </motion.div>
-                  </>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   )
 }

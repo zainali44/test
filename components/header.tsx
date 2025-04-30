@@ -127,18 +127,6 @@ export default function Header() {
                 <span>Profile</span>
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
-              <Link href="/dashboard/billing-history" className="flex items-center px-2 py-1.5">
-                <CreditCard className="mr-2 h-4 w-4" />
-                <span>Billing</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
-              <Link href="/dashboard/settings" className="flex items-center px-2 py-1.5">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </Link>
-            </DropdownMenuItem>
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem className="cursor-pointer text-red-600 rounded-lg" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />

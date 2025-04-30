@@ -1,19 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Check, Zap, Shield, Users, Lock, ArrowRight, MinusCircle, PlusCircle, DollarSign, Globe } from "lucide-react"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
+import { useAuth } from "@/app/contexts/auth-context"
 // import IpStatusBanner from "@/components/ip-status-banner"
 
 type BillingCycle = "monthly" | "yearly"
 
 export default function PricingPage() {
   const router = useRouter()
+  const { user, loading } = useAuth()
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("yearly")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Plan prices
   const prices = {
@@ -46,27 +53,75 @@ export default function PricingPage() {
   }
 
   const handleCheckout = (planName: string, plan: "individual" | "basic" | "premium") => {
+    // Calculate pricing information
     const price = billingCycle === "yearly" ? prices.yearly[plan] : prices.monthly[plan]
     const monthlyRate = `PKR ${price}/mo`
     const duration = billingCycle
     const totalPrice = billingCycle === "yearly" ? price * 12 : price
     const savings = billingCycle === "yearly" ? calculateYearlySavings(plan) : 0
-
-    // Navigate to checkout page with plan details
-    router.push(
-      `/checkout?plan=${planName}&duration=${duration}&price=${totalPrice}&monthlyRate=${monthlyRate}&savings=${savings}`,
-    )
+    
+    // Create plan details to store
+    const planDetails = {
+      plan: planName,
+      duration: duration,
+      price: totalPrice,
+      monthlyRate: monthlyRate,
+      savings: savings
+    }
+    
+    // Store plan details in localStorage for later retrieval
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('selectedPlan', JSON.stringify(planDetails))
+    }
+    
+    // Check if user is logged in
+    if (!mounted || loading) {
+      return // Wait for auth to initialize
+    }
+    
+    if (!user) {
+      // Not logged in - redirect to login page
+      router.push('/login?redirect=checkout')
+    } else {
+      // User is logged in - proceed with checkout
+      router.push(
+        `/checkout?plan=${planName}&duration=${duration}&price=${totalPrice}&monthlyRate=${monthlyRate}&savings=${savings}`,
+      )
+    }
   }
 
   const handleTeamCheckout = () => {
     const basePrice = 100 // Per user price in PKR
     const totalPrice = basePrice * 5
     const monthlyRate = `PKR${basePrice}/user/mo`
-
-    // Navigate to checkout page with team plan details
-    router.push(
-      `/checkout?plan=Teams&teamMembers=5&price=${totalPrice}&monthlyRate=${monthlyRate}`,
-    )
+    
+    // Store team plan details
+    const teamPlanDetails = {
+      plan: 'Teams',
+      teamMembers: 5,
+      price: totalPrice,
+      monthlyRate: monthlyRate
+    }
+    
+    // Store in localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('selectedPlan', JSON.stringify(teamPlanDetails))
+    }
+    
+    // Check if user is logged in
+    if (!mounted || loading) {
+      return // Wait for auth to initialize
+    }
+    
+    if (!user) {
+      // Not logged in - redirect to login page
+      router.push('/login?redirect=checkout')
+    } else {
+      // Navigate to checkout page with team plan details
+      router.push(
+        `/checkout?plan=Teams&teamMembers=5&price=${totalPrice}&monthlyRate=${monthlyRate}`,
+      )
+    }
   }
 
   return (

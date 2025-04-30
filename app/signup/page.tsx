@@ -509,29 +509,6 @@ export default function SignupPage() {
             </Button>
           </motion.div>
 
-          <motion.div variants={itemVariants} className="relative flex items-center justify-center my-4 sm:my-6">
-            <div className="border-t border-gray-200 absolute w-full"></div>
-            <div className="bg-white px-4 relative z-10 text-xs sm:text-sm text-gray-500">OR</div>
-          </motion.div>
-
-          <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full border-gray-300 text-gray-900 py-5 sm:py-6 h-12 sm:h-14 rounded-xl text-sm sm:text-base flex items-center justify-center transition-all duration-300 hover:border-gray-400"
-            >
-              <svg className="h-4 w-4 sm:h-5 sm:w-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M12 0C5.37 0 0 5.37 0 12C0 17.31 3.44 21.68 8.2 23.25C8.8 23.36 9 22.98 9 22.66C9 22.37 9 21.69 9 20.67C5.67 21.39 4.97 19.16 4.97 19.16C4.42 17.77 3.63 17.41 3.63 17.41C2.54 16.67 3.72 16.68 3.72 16.68C4.92 16.76 5.56 17.9 5.56 17.9C6.63 19.73 8.36 19.21 9.04 18.9C9.15 18.13 9.46 17.61 9.81 17.31C7.15 17.01 4.34 15.99 4.34 11.37C4.34 10.07 4.81 9.01 5.58 8.17C5.45 7.87 5.04 6.64 5.7 4.98C5.7 4.98 6.71 4.66 9 6.21C9.97 5.94 11.02 5.81 12.01 5.8C13 5.81 14.04 5.95 15.01 6.21C17.3 4.66 18.3 4.98 18.3 4.98C18.96 6.64 18.55 7.87 18.43 8.17C19.2 9.01 19.66 10.07 19.66 11.37C19.66 16 16.85 17 14.18 17.3C14.63 17.67 15.04 18.42 15.04 19.57C15.04 21.25 15.03 22.28 15.03 22.66C15.03 22.98 15.22 23.36 15.83 23.25C20.57 21.69 24 17.31 24 12C24 5.37 18.63 0 12 0Z"
-                  fill="currentColor"
-                />
-              </svg>
-              <span>Sign up with GitHub</span>
-            </Button>
-          </motion.div>
-
           <motion.div variants={itemVariants} className="text-center mt-6 sm:mt-8">
             <p className="text-gray-600 text-xs sm:text-sm">
               Already have an account?{" "}

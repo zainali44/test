@@ -31,19 +31,21 @@ export default function DownloadsPage() {
       
       // API subscription with Plan object
       if ('Plan' in subscriptionData && subscriptionData.Plan) {
-        return subscriptionData.Plan.name.toLowerCase() === 'free';
+        return subscriptionData.Plan.name.toLowerCase() === 'free' || 
+               subscriptionData.Plan.price === "0.00";
       }
     }
     
     // Check from user data
     if (!user || !user.subscriptions || !Array.isArray(user.subscriptions) || user.subscriptions.length === 0) {
-      return true
+      return true;
     }
     
-    const activeSubscription = user.subscriptions.find(sub => sub.status === 'active')
+    const activeSubscription = user.subscriptions.find(sub => sub.status === 'active');
     return !activeSubscription || 
            activeSubscription.plan_id === 1 || 
-           activeSubscription.plan?.name.toLowerCase() === 'free';
+           (activeSubscription.plan?.name?.toLowerCase() === 'free') ||
+           (activeSubscription.plan?.price === "0.00");
   }
 
   const handleDownload = (platform: string) => {
@@ -317,7 +319,8 @@ function DownloadCard({
     
     // API subscription with Plan object
     if ('Plan' in subscriptionData && subscriptionData.Plan) {
-      return subscriptionData.Plan.name.toLowerCase() === 'free';
+      return subscriptionData.Plan.name.toLowerCase() === 'free' || 
+             subscriptionData.Plan.price === "0.00";
     }
     
     return true;

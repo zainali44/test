@@ -31,6 +31,8 @@ export async function GET(
     try {
       // Try to parse the response as JSON
       const data = await response.json()
+
+      console.log("Transactions:", data)
       
       // Return the successful response
       return NextResponse.json(data)

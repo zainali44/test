@@ -69,8 +69,12 @@ export function Sidebar({ className }: SidebarProps) {
           // Map plan IDs to names
           const planNames: Record<number, string> = {
             1: 'Free Plan',
-            2: 'Basic Plan',
-            3: 'Premium Plan', // Updated from 'Basic Plan' to 'Premium Plan'
+            2: 'Individual Plan',
+            3: 'Basic Plan',
+            4: 'Premium Plan',
+            5: 'Individual Plan (Yearly)',
+            6: 'Basic Plan (Yearly)',
+            7: 'Premium Plan (Yearly)'
           };
           
           return {
@@ -107,8 +111,12 @@ export function Sidebar({ className }: SidebarProps) {
       if ('plan_id' in subscription) {
         const planNames: Record<number, string> = {
           1: 'Free Plan',
-          2: 'Basic Plan',
-          3: 'Premium Plan', // Updated from 'Basic Plan' to 'Premium Plan'
+          2: 'Individual Plan',
+          3: 'Basic Plan',
+          4: 'Premium Plan',
+          5: 'Individual Plan (Yearly)',
+          6: 'Basic Plan (Yearly)',
+          7: 'Premium Plan (Yearly)'
         };
         
         return {
@@ -164,8 +172,12 @@ export function Sidebar({ className }: SidebarProps) {
         // Fall back to plan_id mapping
         const planNames: Record<number, string> = {
           1: 'Free Plan',
-          2: 'Basic Plan',
-          3: 'Premium Plan', // Updated from 'Basic Plan' to 'Premium Plan'
+          2: 'Individual Plan',
+          3: 'Basic Plan',
+          4: 'Premium Plan',
+          5: 'Individual Plan (Yearly)',
+          6: 'Basic Plan (Yearly)',
+          7: 'Premium Plan (Yearly)'
         };
         
         const isFree = activeSubscription.plan_id === 1 || 

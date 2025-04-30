@@ -8,8 +8,8 @@ const nextConfig = {
             'storage.googleapis.com','upload.wikimedia.org','cdn.pixabay.com','cdn-icons-png.flaticon.com']
     },
     env: {
-        NEXTAPI_URL: 'https://ellista.habajumla.com/',
-        NEXT_API: 'https://ellista.habajumla.com',
+        NEXTAPI_URL: 'http://localhost:8000/',
+        NEXT_API: 'http://localhost:8000',
     },
     async headers() {
         return [

@@ -125,13 +125,69 @@ export default function SubscriptionsPage() {
     
     console.log("Active subscription in getPlanDetails:", activeSubscription);
     
-    // If subscription is from API and has plan_id=3, it's Premium
-    if (activeSubscription && 'plan_id' in activeSubscription && activeSubscription.plan_id === 3) {
-      return {
-        name: 'Premium Plan',
-        type: 'Premium',
-        accountType: 'Individual',
-        multiLoginLimit: 5
+    // Check if subscription has a plan_id field
+    if (activeSubscription && 'plan_id' in activeSubscription) {
+      const planId = activeSubscription.plan_id;
+      
+      // Map plan_id to the correct name/type based on the provided plan list
+      switch (planId) {
+        case 1:
+          return {
+            name: 'Free Plan',
+            type: 'Free',
+            accountType: 'Individual',
+            multiLoginLimit: 1
+          };
+        case 2:
+          return {
+            name: 'Individual Plan',
+            type: 'Individual',
+            accountType: 'Individual',
+            multiLoginLimit: 2
+          };
+        case 3:
+          return {
+            name: 'Basic Plan',
+            type: 'Basic',
+            accountType: 'Individual',
+            multiLoginLimit: 2
+          };
+        case 4:
+          return {
+            name: 'Premium Plan',
+            type: 'Premium',
+            accountType: 'Individual',
+            multiLoginLimit: 5
+          };
+        case 5:
+          return {
+            name: 'Individual Plan (Yearly)',
+            type: 'Individual',
+            accountType: 'Individual',
+            multiLoginLimit: 2
+          };
+        case 6:
+          return {
+            name: 'Basic Plan (Yearly)',
+            type: 'Basic',
+            accountType: 'Individual',
+            multiLoginLimit: 2
+          };
+        case 7:
+          return {
+            name: 'Premium Plan (Yearly)',
+            type: 'Premium',
+            accountType: 'Individual',
+            multiLoginLimit: 5
+          };
+        default:
+          // Default for unknown plan IDs
+          return {
+            name: 'Unknown Plan',
+            type: 'Standard',
+            accountType: 'Individual',
+            multiLoginLimit: 1
+          };
       }
     }
     
@@ -158,15 +214,21 @@ export default function SubscriptionsPage() {
         planType = 'Premium';
       } else if (planName.toLowerCase().includes('basic') || planName.toLowerCase().includes('standard')) {
         planType = 'Basic';
+      } else if (planName.toLowerCase().includes('individual')) {
+        planType = 'Individual';
       } else if (planName.toLowerCase() !== 'free') {
         planType = 'Standard';
       }
       
+      // Check billing cycle to append (Yearly) if needed
+      const billingCycle = plan.billing_cycle || 'monthly';
+      const displayName = billingCycle === 'yearly' ? `${formattedPlanName} (Yearly)` : formattedPlanName;
+      
       return {
-        name: formattedPlanName,
+        name: displayName,
         type: planType,
         accountType: 'Individual',
-        multiLoginLimit: planType === 'Premium' ? 5 : planType === 'Basic' ? 2 : 1
+        multiLoginLimit: planType === 'Premium' ? 5 : planType === 'Basic' || planType === 'Individual' ? 2 : 1
       }
     }
     
@@ -179,6 +241,8 @@ export default function SubscriptionsPage() {
       planType = 'Premium'
     } else if (planName.toLowerCase().includes('basic')) {
       planType = 'Basic'
+    } else if (planName.toLowerCase().includes('individual')) {
+      planType = 'Individual'
     } else if (planName.toLowerCase() !== 'free') {
       planType = 'Standard'
     }
@@ -190,7 +254,7 @@ export default function SubscriptionsPage() {
       name: formattedPlanName,
       type: planType,
       accountType: 'Individual',
-      multiLoginLimit: planType === 'Premium' ? 5 : planType === 'Basic' ? 2 : 1
+      multiLoginLimit: planType === 'Premium' ? 5 : planType === 'Basic' || planType === 'Individual' ? 2 : 1
     }
   }
   
@@ -224,6 +288,13 @@ export default function SubscriptionsPage() {
   const getBillingCycle = () => {
     if (!activeSubscription) return "Free";
     
+    // Check if subscription has 'plan' property with 'billing_cycle' directly
+    if (activeSubscription.plan && typeof activeSubscription.plan === 'object') {
+      const billingCycle = activeSubscription.plan.billing_cycle;
+      return billingCycle === "yearly" ? "12 Months" : 
+             billingCycle === "monthly" ? "Monthly" : "Free";
+    }
+    
     // Check if subscription has plan_id
     if ('plan_id' in activeSubscription) {
       const planId = activeSubscription.plan_id;
@@ -233,12 +304,6 @@ export default function SubscriptionsPage() {
       }
       // Fallback to defaults based on plan
       return planId === 1 ? "Free" : "Monthly";
-    }
-    
-    // Check for plan object first (direct API response)
-    if ('plan' in activeSubscription && activeSubscription.plan) {
-      return activeSubscription.plan.billing_cycle === "yearly" ? "12 Months" : 
-             activeSubscription.plan.billing_cycle === "monthly" ? "Monthly" : "Free";
     }
     
     // Check User object
@@ -277,9 +342,11 @@ export default function SubscriptionsPage() {
     }
     
     if (isApiSubscription(activeSubscription) && 'Plan' in activeSubscription) {
-      return activeSubscription.Plan.name.toLowerCase() === 'free';
+      return activeSubscription.Plan.name.toLowerCase() === 'free' || 
+             activeSubscription.Plan.price === "0.00";
     } else {
-      return activeSubscription.plan?.name.toLowerCase() === 'free';
+      return activeSubscription.plan?.name.toLowerCase() === 'free' || 
+             activeSubscription.plan?.price === "0.00";
     }
   }
 
@@ -353,6 +420,8 @@ export default function SubscriptionsPage() {
       details: 'Credit Card',
       lastDigits: '****'
     };
+
+    console.log("Billing History Data:", billingHistoryData);
     
     // If we have billing history data, use the most recent transaction
     if (billingHistoryData.length > 0) {
@@ -363,13 +432,28 @@ export default function SubscriptionsPage() {
       
       const latestTransaction = sortedTransactions[0];
       
-      // Extract payment method from description (format is typically "Method - Reference")
-      const description = latestTransaction.description || '';
-      const parts = description.split(' - ');
-      
-      if (parts.length > 0) {
-        paymentInfo.details = parts[0];
-        paymentInfo.type = latestTransaction.paymentType || 'card';
+      // Use paymentType directly if available, otherwise extract from description
+      if (latestTransaction.paymentType) {
+        paymentInfo.type = latestTransaction.paymentType.toLowerCase();
+        
+        // If the payment type is 'card', update the details to 'Card'
+        if (paymentInfo.type === 'card') {
+          paymentInfo.details = 'Card';
+        } else {
+          // Extract payment method from description if needed
+          const description = latestTransaction.description || '';
+          const parts = description.split(' - ');
+          if (parts.length > 0) {
+            paymentInfo.details = parts[0];
+          }
+        }
+      } else {
+        // Fallback to parsing from description
+        const description = latestTransaction.description || '';
+        const parts = description.split(' - ');
+        if (parts.length > 0) {
+          paymentInfo.details = parts[0];
+        }
       }
     }
     
@@ -405,9 +489,10 @@ export default function SubscriptionsPage() {
       // Get user ID from auth context, fallback to 3 if not available
       const userId = user?.id || '3'; 
       
-      // Only get completed/paid transactions by using our search API
-      const url = `/api/transactions/search?userId=${userId}&status=completed`;
+      // Use the direct endpoint that's returning the correct data with multiple transactions
+      const url = `/api/transactions/${userId}`;
       console.log("Fetching billing history from:", url);
+      console.log("User ID being used:", userId);
       
       const response = await fetch(url);
       
@@ -420,7 +505,7 @@ export default function SubscriptionsPage() {
       // Parse the response directly as JSON
       const data = await response.json();
       
-      if (data && Array.isArray(data.transactions)) {
+      if (data && Array.isArray(data.transactions) && data.transactions.length > 0) {
         console.log(`Successfully loaded ${data.transactions.length} completed transactions`);
         
         // Map the transactions to billing history format
@@ -433,15 +518,19 @@ export default function SubscriptionsPage() {
           const reference = transaction.bank_detail?.payment_reference || '';
           const shortRef = reference.length > 10 ? `${reference.slice(0, 10)}...` : reference;
           
+          // Display 'Card' if the payment type is 'card', otherwise use the details from the API
+          const displayMethod = paymentType.toLowerCase() === 'card' ? 'Card' : paymentMethod;
+          
           return {
             date: formatDate(transaction.processed_at),
-            description: `${paymentMethod} - ${shortRef}`,
+            description: `${displayMethod} - ${shortRef}`,
             amount: `${transaction.currency} ${transaction.amount}`,
             status: 'Completed',
             paymentType: paymentType // Store payment type for icon display
           };
         });
         
+        console.log("Processed history items:", history.length, history);
         setBillingHistoryData(history);
       } else {
         console.log("No transaction data found or data in unexpected format:", data);
@@ -494,6 +583,12 @@ export default function SubscriptionsPage() {
       isMounted = false;
     };
   }, [fetchBillingHistory, billingHistoryData.length, loadingHistory]);
+  
+  // Log billing history for debugging
+  useEffect(() => {
+    console.log("Billing history count:", billingHistoryData.length);
+    console.log("Billing history data:", billingHistoryData);
+  }, [billingHistoryData]);
 
   // Get billing history
   const getBillingHistory = (): BillingHistoryItem[] => {
@@ -534,41 +629,11 @@ export default function SubscriptionsPage() {
   // Billing history data
   const billingHistory = getBillingHistory();
 
-  // VPN add-ons data
-  const addOns = [
-    { name: "Dedicated IP", status: "locked", isNew: false, icon: Shield },
-    { name: "Dedicated Server", status: "locked", isNew: true, icon: Server },
-    { name: "Port Forwarding", status: "purchased", isNew: false, icon: Settings },
-    { name: "Multi Login", status: "locked", isNew: false, icon: Users },
-    { name: "Residential Network", status: "locked", isNew: true, icon: Network },
-    { name: "Wireguard", status: "locked", isNew: false, icon: Layers },
-  ]
-
-  const copyToClipboard = (text: string, type: "username" | "password") => {
-    navigator.clipboard.writeText(text)
-    if (type === "username") {
-      setUsernameCopied(true)
-      setTimeout(() => setUsernameCopied(false), 2000)
-    } else {
-      setPasswordCopied(true)
-      setTimeout(() => setPasswordCopied(false), 2000)
-    }
-  }
-
-  // Helper function to get plan name from plan_id
-  const getPlanNameFromId = (planId: number): string => {
-    const planNames: Record<number, string> = {
-      1: 'Free',
-      2: 'Basic',
-      3: 'Premium' // Updated from Basic to Premium
-    };
-    return planNames[planId] || 'Premium';
-  };
 
   // Function to get payment method icon
   const getPaymentMethodIcon = (paymentType: string) => {
     if (paymentType.toLowerCase() === 'wallet') {
-      return <Wallet className="h-3.5 w-3.5 text-purple-600 mr-2" />;
+      return <Wallet className="h-3.5 w-3.5 text-green-600 mr-2" />;
     } else if (paymentType.toLowerCase() === 'card') {
       return <CreditCard className="h-3.5 w-3.5 text-blue-600 mr-2" />;
     } else {
@@ -788,14 +853,14 @@ export default function SubscriptionsPage() {
                     <CreditCard className="h-3.5 w-3.5 text-gray-500 mr-2" />
                     <span className="text-[10px] uppercase tracking-wider text-gray-500">Payment Method</span>
                   </div>
-                  <Button
+                  {/* <Button
                     variant="ghost"
                     size="sm"
                     className="text-[10px] h-6 px-2 text-gray-900 hover:bg-gray-100 rounded-sm"
                   >
                     Change
                     <ChevronRight className="h-3 w-3 ml-1" />
-                  </Button>
+                  </Button> */}
                 </div>
                 <div className="mt-2 flex items-center">
                   {getPaymentMethodIcon(subscriptionData.paymentType)}
@@ -839,7 +904,7 @@ export default function SubscriptionsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {billingHistory.slice(0, 5).map((item, index) => (
+                      {billingHistory.map((item, index) => (
                         <tr key={index}>
                           <td className="text-xs px-2 sm:px-3 py-2">{item.date}</td>
                           <td className="text-xs px-2 sm:px-3 py-2">

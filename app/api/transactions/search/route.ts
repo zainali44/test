@@ -71,6 +71,8 @@ export async function GET(request: NextRequest) {
     try {
       // Parse the response as JSON
       const data = await response.json();
+
+      console.log("Transactions:", data)
       
       // Filter transactions if necessary
       if (data && Array.isArray(data.transactions)) {

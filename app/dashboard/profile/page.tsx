@@ -136,13 +136,22 @@ export default function ProfilePage() {
         planName = 'Free';
         planType = 'Free';
       } else if (planId === 2) {
-        planName = 'Standard';
-        planType = 'Standard';
+        planName = 'Individual';
+        planType = 'Individual';
       } else if (planId === 3) {
         planName = 'Basic';
         planType = 'Basic';
-      } else if (planId === 4 || planId === 5) { // Added plan_id 5 for Premium
+      } else if (planId === 4) {
         planName = 'Premium';
+        planType = 'Premium';
+      } else if (planId === 5) {
+        planName = 'Individual (Yearly)';
+        planType = 'Individual';
+      } else if (planId === 6) {
+        planName = 'Basic (Yearly)';
+        planType = 'Basic';
+      } else if (planId === 7) {
+        planName = 'Premium (Yearly)';
         planType = 'Premium';
       }
       

@@ -113,13 +113,31 @@ function PaymentSuccessContent() {
           console.log("Creating transaction from payment data:", paymentData);
           
           try {
-            // Map plan name to ID if not available directly
-            const planMap: Record<string, number> = {
-              'standard': 1,
-              'basic': 2,
-              'premium': 3
+            // Map plan name and duration to the correct plan ID
+            const planMap: Record<string, Record<string, number>> = {
+              // Monthly plans
+              'monthly': {
+                'free': 1,
+                'individual': 2,
+                'basic': 3,
+                'premium': 4
+              },
+              // Yearly plans
+              'yearly': {
+                'individual': 5,
+                'basic': 6,
+                'premium': 7
+              }
             };
-            const planId = planMap[paymentData.plan] || 1;
+            
+            // Get the plan ID based on plan name and duration
+            const duration = paymentData.duration || 'monthly';
+            const planName = paymentData.plan?.toLowerCase() || 'free';
+            
+            // Get the correct plan ID from the mapping
+            const planId = planMap[duration]?.[planName] || 1; // Default to free plan if not found
+            
+            console.log(`Selecting plan ID ${planId} for plan: ${planName}, duration: ${duration}`);
             
             // Get user ID - ensure it's a number and fall back to 1 if not available
             let userId = 1; // Default fallback

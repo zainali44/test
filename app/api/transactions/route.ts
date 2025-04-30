@@ -47,6 +47,9 @@ export async function POST(request: NextRequest) {
         signal: controller.signal
       });
 
+      console.log("Transactions API Response:", response)
+      console.log("Transactions API Response Data:", await response.json())
+      console.log("Transactions API URL:", `${apiUrl}/transactions`)
       // Clear the timeout
       clearTimeout(timeoutId);
 

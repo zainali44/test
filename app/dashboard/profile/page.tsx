@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/app/contexts/auth-context"
 import { useSubscription } from "@/app/contexts/subscription-context"
 import { User } from "@/app/utils/auth"
-import { updateUserProfile, updateUserPassword, uploadProfileImage, requestEmailVerification, validateToken, isUserVerified, debugVerificationStatus } from "@/app/utils/profileApi"
+import { updateUserProfile as apiUpdateUserProfile, updateUserPassword, uploadProfileImage, requestEmailVerification, validateToken, isUserVerified, debugVerificationStatus } from "@/app/utils/profileApi"
+import { fetchUserProfile } from "@/app/utils/authUtils"
 
 // Extend the User interface for our additional properties
 interface ExtendedUser extends User {
@@ -243,95 +244,169 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [apiStatus, setApiStatus] = useState<{message: string; type: 'success' | 'error' | 'loading' | 'info'} | null>(null);
+  const [profileData, setProfileData] = useState<ExtendedUser | null>(null);
   
+  // Fetch user profile data from API
+  const fetchProfileData = async () => {
+    if (!token) {
+      console.error("No auth token available for profile fetch");
+      setApiStatus({ 
+        message: "Authentication error: No token available", 
+        type: 'error' 
+      });
+      return;
+    }
+    
+    try {
+      setApiStatus({ message: "Fetching profile data...", type: 'loading' });
+      
+      // Use the fetchUserProfile function from authUtils instead of direct fetch
+      const { success, data, message } = await fetchUserProfile(token);
+      
+      if (success && data) {
+        // Update profile data state
+        setProfileData(data);
+        
+        // Update form data
+        setFormData(prev => ({
+          ...prev,
+          name: data.name || prev.name,
+          email: data.email || prev.email
+        }));
+        
+        // Update email verification status
+        setEmailVerified(data.isVerifiedEmail || data.isVerified || false);
+        
+        // Update context data if needed
+        if (contextUpdateUserData) {
+          contextUpdateUserData(data);
+        }
+        
+        setApiStatus({ message: "Profile data loaded successfully", type: 'success' });
+        
+        // Clear status after 3 seconds
+        setTimeout(() => {
+          setApiStatus(null);
+        }, 3000);
+      } else {
+        throw new Error(message || 'Failed to load profile data');
+      }
+    } catch (err: any) {
+      console.error("Error fetching profile data:", err);
+      setApiStatus({ 
+        message: err.message || "Failed to load profile data", 
+        type: 'error' 
+      });
+    }
+  };
+  
+  // Fetch subscription data from API
+  const fetchUserSubscription = async () => {
+    if (!token || !user?.id) {
+      console.error("No auth token or user ID available for subscription fetch");
+      return;
+    }
+    
+    try {
+      // Try to fetch from active plan endpoint first
+      const activePlanUrl = `/api/subscriptions/active-plan/${user.id}`;
+      
+      try {
+        const result = await fetch(activePlanUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (result.ok) {
+          const data = await result.json();
+          console.log("Active plan data:", data);
+          if (data.success) {
+            // No need to show toast on success
+            // toast.success("Subscription data loaded successfully");
+          }
+        } else if (result.status !== 404) {
+          // Only show error if it's not a 404 (user might not have a plan)
+          const errorData = await result.json();
+          console.error(`Error fetching active plan: ${result.status}`);
+          const errorMessage = errorData.message || "Failed to load subscription data";
+          // Don't show toast for subscription errors
+          // toast.error(`Error: ${errorMessage}`);
+          console.error(`Subscription error: ${errorMessage}`);
+        }
+      } catch (planErr: any) {
+        console.error("Error fetching active plan:", planErr);
+      }
+      
+      // Fallback to regular subscription API
+      // Use the subscription context function, but catch errors internally
+      try {
+        await fetchSubscription(user.id.toString(), false);
+      } catch (subErr: any) {
+        console.error("Error in fetchSubscription fallback:", subErr);
+        
+        // Try one more alternative endpoint if needed
+        try {
+          const alternativeUrl = `/api/subscriptions/user-plan/${user.id}`;
+          const altResult = await fetch(alternativeUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (altResult.ok) {
+            console.log("Fetched subscription from alternative endpoint");
+          }
+        } catch (altErr) {
+          console.error("All subscription endpoints failed");
+        }
+      }
+    } catch (err: any) {
+      console.error("Error in main fetchUserSubscription:", err);
+      // No need to show UI error for subscription issues
+    }
+  };
+  
+  // Load both profile and subscription data on component mount
+  useEffect(() => {
+    if (token && user) {
+      fetchProfileData();
+      fetchUserSubscription();
+    }
+  }, [token, user?.id]);
+
   // Refresh user data from the validate-token endpoint
   const refreshUserData = async (showLoadingState = false) => {
     if (!token) return;
     
+    if (showLoadingState) {
+      setApiStatus({ message: "Refreshing user data...", type: 'loading' });
+    }
+    
     try {
-      if (showLoadingState) {
-        setApiStatus({message: "Refreshing user data...", type: "loading"});
-      }
+      await fetchProfileData();
+      await fetchUserSubscription();
       
-      // Reset the cache to force a fresh validation
-      checkVerificationStatus.lastChecked = 0;
-      checkVerificationStatus.cachedData = null;
-      
-      try {
-        // Always perform a fresh validation when refreshing
-        const validationResult = await checkVerificationStatus();
-        
-        if (validationResult && validationResult.valid) {
-          // Force form data update
-          if (validationResult.user) {
-            setFormData(prev => ({
-              ...prev,
-              name: validationResult.user.name || prev.name,
-              email: validationResult.user.email || prev.email
-            }));
-          }
-          
-          if (showLoadingState) {
-            setApiStatus({message: "User data refreshed successfully", type: "success"});
-            setTimeout(() => setApiStatus(null), 2000);
-          }
-        } else {
-          if (showLoadingState) {
-            setApiStatus({message: "Could not validate user data", type: "error"});
-            setTimeout(() => setApiStatus(null), 2000);
-          }
-        }
-      } catch (validationError) {
-        console.error("Validation error in refreshUserData:", validationError);
-        
-        // If validation fails, try using direct API call without caching
-        try {
-          const directValidateData = await validateToken(token);
-          
-          if (directValidateData && directValidateData.valid && directValidateData.user) {
-            // Update the UI directly with the validation data
-            setFormData(prev => ({
-              ...prev,
-              name: directValidateData.user?.name || prev.name,
-              email: directValidateData.user?.email || prev.email
-            }));
-            
-            // Update verification status
-            setEmailVerified(!!directValidateData.user?.isVerified);
-            
-            // Update profile picture if available
-            const profileImage = directValidateData.user?.imageBase64 || directValidateData.user?.profilePicture;
-            
-            if (contextUpdateUserData && user && profileImage) {
-              contextUpdateUserData({
-                ...user,
-                profilePicture: profileImage
-              });
-            }
-            
-            if (showLoadingState) {
-              setApiStatus({message: "User data refreshed successfully", type: "success"});
-              setTimeout(() => setApiStatus(null), 2000);
-            }
-          }
-        } catch (directError) {
-          console.error("Error in direct validation:", directError);
-          if (showLoadingState) {
-            setApiStatus({message: "Failed to refresh user data", type: "error"});
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error refreshing user data:", error);
       if (showLoadingState) {
-        setApiStatus({message: "Failed to refresh user data", type: "error"});
+        setApiStatus({ message: "User data refreshed successfully", type: 'success' });
+        
+        // Clear status after 3 seconds
+        setTimeout(() => {
+          setApiStatus(null);
+        }, 3000);
+      }
+    } catch (err: any) {
+      console.error("Error refreshing user data:", err);
+      
+      if (showLoadingState) {
+        setApiStatus({ 
+          message: err.message || "Failed to refresh user data", 
+          type: 'error' 
+        });
       }
     }
-  };
-  
-  // Add a refresh button handler
-  const handleRefreshClick = () => {
-    refreshUserData(true);
   };
   
   // Check verification status and refresh user data when component mounts
@@ -713,7 +788,7 @@ export default function ProfilePage() {
       setError(null);
       setApiStatus({message: "Updating profile...", type: "loading"});
       
-      const apiResponse = await updateUserProfile(formData.name, formData.email, token);
+      const apiResponse = await apiUpdateUserProfile(formData.name, formData.email, token);
       
       // Refresh user data from server to ensure we have latest data
       await refreshUserData(false);
@@ -1270,7 +1345,7 @@ export default function ProfilePage() {
                     variant="outline" 
                     size="sm" 
                     className="text-2xs sm:text-xs h-7 sm:h-8 rounded-md border-gray-200 hover:bg-gray-50"
-                    onClick={handleRefreshClick}
+                    onClick={() => refreshUserData(true)}
                   >
                     <RefreshCw className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     Refresh

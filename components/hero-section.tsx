@@ -4,8 +4,23 @@ import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { Users } from "lucide-react"
+import { useAuth } from "@/app/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
 export default function HeroSection() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const handleGetStarted = () => {
+    if (user) {
+      // If user is already logged in, redirect to dashboard
+      router.push('/dashboard');
+    } else {
+      // If not logged in, redirect to login page
+      router.push('/login');
+    }
+  };
+
   return (
     <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 px-4 overflow-hidden h-screen bg-[#1f0045]">
       {/* Animated background elements */}
@@ -134,8 +149,9 @@ export default function HeroSection() {
           <Button
             size="lg"
             className="bg-[#9333EA] hover:bg-[#A855F7] text-white font-medium px-6 sm:px-8 md:px-10 py-5 md:py-7 text-base md:text-lg rounded-full shadow-lg shadow-purple-500/20 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/30 hover:-translate-y-1 w-[80%] sm:w-auto"
+            onClick={handleGetStarted}
           >
-            Get SecureVPN
+            Get Started
           </Button>
           <Button
             size="lg"

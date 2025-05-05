@@ -187,7 +187,7 @@ const TokenDebugButton = ({ token }: { token: string | null }) => {
   
   return (
     <>
-      <Button 
+      {/* <Button 
         variant="outline"
         size="sm"
         className="text-2xs sm:text-xs h-7 sm:h-8 rounded-md border-gray-200 hover:bg-gray-50"
@@ -195,7 +195,7 @@ const TokenDebugButton = ({ token }: { token: string | null }) => {
         disabled={loading}
       >
         {loading ? 'Checking...' : 'Debug Token'}
-      </Button>
+      </Button> */}
       
       {showDebug && debugData && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1354,14 +1354,14 @@ export default function ProfilePage() {
                   <TokenDebugButton token={token} />
                   
                   <Link href="/dashboard/token-renew">
-                    <Button 
+                    {/* <Button 
                       variant="outline" 
                       size="sm"
                       className="text-2xs sm:text-xs h-7 sm:h-8 rounded-md border-gray-200 hover:bg-gray-50"
                     >
                       <Shield className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
                       Manage Session
-                    </Button>
+                    </Button> */}
                   </Link>
                 </div>
               </div>

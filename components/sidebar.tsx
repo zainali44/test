@@ -20,188 +20,56 @@ export function Sidebar({ className }: SidebarProps) {
   const { isOpen, toggleSidebar, closeSidebar } = useSidebar()
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const { user } = useAuth()
-  const { subscription, pageRefreshCount } = useSubscription()
+  const { subscription } = useSubscription()
   
-  // Extract subscription data from user context
-  const getSubscriptionInfo = useCallback(() => {
-    // Check for API subscription data from Jotai state
+  // Get plan info from subscription data
+  const getPlanInfo = () => {
+    // Default to Free Plan
+    let planName = 'Free Plan';
+    let endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    let isFree = true;
+    let isPremiumPlan = false;
+    
     if (subscription) {
-      // Only log in development environment
-      if (process.env.NODE_ENV === 'development') {
-        // Use console.debug instead of console.log to reduce noise
-        console.debug("Subscription data available:", 
-          subscription.subscription_id || subscription.plan_id || 'details hidden');
+      // Extract plan data from subscription
+      const subscriptionData = (subscription as any).data || subscription;
+      
+      // Get plan_id
+      const planId = subscriptionData.plan_id || 
+                    (subscriptionData.plan && subscriptionData.plan.plan_id) || 
+                    (subscriptionData.Plan && subscriptionData.Plan.plan_id) || 1;
+      
+      // Get plan name
+      if (planId === 1) {
+        planName = 'Free Plan';
+        isFree = true;
+      } else if (planId === 2 || planId === 5) {
+        planName = planId === 5 ? 'Individual Plan (Yearly)' : 'Individual Plan';
+        isFree = false;
+      } else if (planId === 3 || planId === 6) {
+        planName = planId === 6 ? 'Basic Plan (Yearly)' : 'Basic Plan';
+        isFree = false;
+      } else if (planId === 4 || planId === 7) {
+        planName = planId === 7 ? 'Premium Plan (Yearly)' : 'Premium Plan';
+        isFree = false;
+        isPremiumPlan = true;
       }
       
-      // Check if subscription is wrapped in a data property
-      if ((subscription as any).success && (subscription as any).data) {
-        const subscriptionData = (subscription as any).data;
-        
-        // Get plan name from the plan object if available
-        if (subscriptionData.plan) {
-          const planName = subscriptionData.plan.name 
-            ? subscriptionData.plan.name.charAt(0).toUpperCase() + subscriptionData.plan.name.slice(1) + ' Plan'
-            : 'Premium Plan';
-          
-          return {
-            planName: planName,
-            endDate: subscriptionData.end_date ? new Date(subscriptionData.end_date) : null,
-            isFree: subscriptionData.plan.price === "0.00"
-          }
-        }
-        
-        // Check if it has Plan object
-        if (subscriptionData.Plan) {
-          // Capitalize the first letter of the plan name 
-          const planName = subscriptionData.Plan.name 
-            ? subscriptionData.Plan.name.charAt(0).toUpperCase() + subscriptionData.Plan.name.slice(1) + ' Plan'
-            : 'Unknown Plan';
-          
-          return {
-            planName: planName,
-            endDate: subscriptionData.end_date ? new Date(subscriptionData.end_date) : null,
-            isFree: subscriptionData.Plan.price === "0.00"
-          }
-        }
-        
-        // Fallback to plan_id mapping if no plan object
-        if (subscriptionData.plan_id) {
-          // Map plan IDs to names
-          const planNames: Record<number, string> = {
-            1: 'Free Plan',
-            2: 'Individual Plan',
-            3: 'Basic Plan',
-            4: 'Premium Plan',
-            5: 'Individual Plan (Yearly)',
-            6: 'Basic Plan (Yearly)',
-            7: 'Premium Plan (Yearly)'
-          };
-          
-          return {
-            planName: planNames[subscriptionData.plan_id] || 'Premium Plan',
-            endDate: subscriptionData.end_date ? new Date(subscriptionData.end_date) : null,
-            isFree: subscriptionData.plan_id === 1
-          }
-        }
-      }
-      
-      // Check if it's a free plan (plan_id=1)
-      if ('plan_id' in subscription && subscription.plan_id === 1) {
-        return {
-          planName: 'Free Plan',
-          endDate: null,
-          isFree: true
-        }
-      }
-      
-      // Handle the case for direct plan object in subscription
-      if ('plan' in subscription && subscription.plan) {
-        const planName = subscription.plan.name 
-          ? subscription.plan.name.charAt(0).toUpperCase() + subscription.plan.name.slice(1) + ' Plan'
-          : 'Unknown Plan';
-        
-        return {
-          planName: planName,
-          endDate: subscription.end_date ? new Date(subscription.end_date) : null,
-          isFree: subscription.plan.price === "0.00"
-        }
-      }
-      
-      // Map plan_id to name for direct plan_id property
-      if ('plan_id' in subscription) {
-        const planNames: Record<number, string> = {
-          1: 'Free Plan',
-          2: 'Individual Plan',
-          3: 'Basic Plan',
-          4: 'Premium Plan',
-          5: 'Individual Plan (Yearly)',
-          6: 'Basic Plan (Yearly)',
-          7: 'Premium Plan (Yearly)'
-        };
-        
-        return {
-          planName: planNames[subscription.plan_id] || 'Premium Plan',
-          endDate: subscription.end_date ? new Date(subscription.end_date) : null,
-          isFree: subscription.plan_id === 1
-        }
-      }
-      
-      // API subscription with Plan object
-      if ('Plan' in subscription && subscription.Plan) {
-        // Capitalize the first letter of the plan name 
-        const planName = subscription.Plan.name 
-          ? subscription.Plan.name.charAt(0).toUpperCase() + subscription.Plan.name.slice(1) + ' Plan'
-          : 'Unknown Plan';
-        
-        return {
-          planName: planName,
-          endDate: subscription.end_date ? new Date(subscription.end_date) : null,
-          isFree: subscription.Plan.price === "0.00"
-        }
-      }
-      
-      // Check for basic in User object
-      if ('User' in subscription && subscription.User && subscription.User.subscription_plan === 'basic') {
-        return {
-          planName: 'Basic Plan',
-          endDate: subscription.end_date || subscription.User.subscription_end_date 
-            ? new Date(subscription.end_date || subscription.User.subscription_end_date) 
-            : null,
-          isFree: false
-        }
+      // Get end date
+      const endDateStr = subscriptionData.end_date || 
+                        subscriptionData.next_billing_date ||
+                        (subscriptionData.plan && subscriptionData.plan.next_billing_date) ||
+                        (subscriptionData.Plan && subscriptionData.Plan.next_billing_date);
+                        
+      if (endDateStr) {
+        endDate = new Date(endDateStr);
       }
     }
     
-    // If user data includes subscription information
-    if (user && 'subscriptions' && Array.isArray(user.subscriptions) && user.subscriptions.length > 0) {
-      const activeSubscription = user.subscriptions.find(sub => sub.status === 'active')
-      
-      if (activeSubscription) {
-        // Get plan name directly from the plan object if available
-        if (activeSubscription.plan?.name) {
-          const planName = activeSubscription.plan.name.charAt(0).toUpperCase() + 
-            activeSubscription.plan.name.slice(1) + ' Plan';
-          
-          return {
-            planName: planName,
-            endDate: activeSubscription.end_date ? new Date(activeSubscription.end_date) : null,
-            isFree: activeSubscription.plan_id === 1 || activeSubscription.plan.price === "0.00"
-          }
-        }
-        
-        // Fall back to plan_id mapping
-        const planNames: Record<number, string> = {
-          1: 'Free Plan',
-          2: 'Individual Plan',
-          3: 'Basic Plan',
-          4: 'Premium Plan',
-          5: 'Individual Plan (Yearly)',
-          6: 'Basic Plan (Yearly)',
-          7: 'Premium Plan (Yearly)'
-        };
-        
-        const isFree = activeSubscription.plan_id === 1 || 
-                       (activeSubscription.plan?.name?.toLowerCase() === 'free') ||
-                       (activeSubscription.plan?.price === "0.00");
-        
-        return {
-          planName: isFree ? 'Free Plan' : (planNames[activeSubscription.plan_id] || 'Premium Plan'),
-          endDate: !isFree && activeSubscription.end_date ? new Date(activeSubscription.end_date) : null,
-          isFree: isFree
-        }
-      }
-    }
-    
-    // Default to Free plan if no subscription data is found
-    return {
-      planName: 'Free Plan',
-      endDate: null,
-      isFree: true
-    }
-  }, [subscription, user]);
-
-  const { planName, endDate, isFree } = getSubscriptionInfo();
-  const isPremiumPlan = !isFree;
+    return { planName, endDate, isFree, isPremiumPlan };
+  };
+  
+  const { planName, endDate, isFree, isPremiumPlan } = getPlanInfo();
 
   const navItems = [
     {

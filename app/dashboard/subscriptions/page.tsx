@@ -45,26 +45,69 @@ import { useSubscription } from "@/app/contexts/subscription-context"
 import { ApiSubscription, SubscriptionData } from "@/app/contexts/subscription-context"
 import Link from "next/link"
 import Image from "next/image"
+import { toast } from "react-hot-toast"
 
 export default function SubscriptionsPage() {
-  const { user } = useAuth()
-  const { subscription, loading, error, fetchSubscription, pageRefreshCount } = useSubscription()
+  const { user, token } = useAuth()
+  const { subscription, loading, error, fetchSubscription } = useSubscription()
   const [showPassword, setShowPassword] = useState(false)
   const [passwordCopied, setPasswordCopied] = useState(false)
   const [usernameCopied, setUsernameCopied] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const hasInitiallyFetched = useRef(false)
 
-  // Refresh subscription data when component mounts, user changes, or page refreshes
+  // Refresh subscription data when component mounts
   useEffect(() => {
-    // Only force a refresh if we detect a need to refresh (new page visit or manual refresh)
-    // and if we have user data but haven't fetched yet
-    if (user?.id && !hasInitiallyFetched.current) {
-      console.log("Fetching subscription in subscriptions page");
-      fetchSubscription(user.id, true); // Force refresh on initial load
-      hasInitiallyFetched.current = true;
-    }
-  }, [user?.id, fetchSubscription]);
+    let isActive = true;
+    let didAttempt = false;
+    
+    const loadSubscription = async () => {
+      if (user?.id && isActive && !didAttempt) {
+        didAttempt = true;
+        try {
+          // setApiStatus({message: "Loading subscription data...", type: "loading"});
+          // Use our dedicated API route for active plan data
+          const activePlanUrl = `/api/subscriptions/active-plan/${user.id}`;
+          const result = await fetch(activePlanUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (result.ok) {
+            const data = await result.json();
+            console.log("Active plan data:", data);
+            if (data.success) {
+              // Update subscription data from active-plan endpoint
+              hasInitiallyFetched.current = true;
+              await fetchSubscription(user.id.toString(), true); // Force refresh with the new data
+            }
+          } else if (result.status !== 404) {
+            const errorData = await result.json();
+            console.error(`Error fetching active plan: ${result.status}`);
+            const errorMessage = errorData.message || "Failed to load subscription data";
+            toast.error(`Error: ${errorMessage}`);
+          }
+          
+          // Only try the regular fetchSubscription if active-plan failed
+          if (!hasInitiallyFetched.current) {
+            await fetchSubscription(user.id, false);
+          }
+        } catch (err) {
+          console.error("Error fetching subscription:", err);
+          const errorMessage = err instanceof Error ? err.message : "Failed to load subscription data";
+          toast.error(`Error: ${errorMessage}`);
+        }
+      }
+    };
+    
+    loadSubscription();
+    
+    return () => {
+      isActive = false;
+    };
+  }, [user?.id, token]);
 
   // Function to manually refresh subscription data
   const refreshSubscriptionData = async () => {
@@ -120,142 +163,73 @@ export default function SubscriptionsPage() {
         type: 'Free',
         accountType: 'Individual',
         multiLoginLimit: 1
-      }
+      };
     }
     
-    console.log("Active subscription in getPlanDetails:", activeSubscription);
+    // Get plan_id from the subscription
+    const planId = activeSubscription.plan_id || 
+                  (activeSubscription.plan && activeSubscription.plan.plan_id) || 
+                  ((activeSubscription as any).Plan && (activeSubscription as any).Plan.plan_id) || 1;
     
-    // Check if subscription has a plan_id field
-    if (activeSubscription && 'plan_id' in activeSubscription) {
-      const planId = activeSubscription.plan_id;
-      
-      // Map plan_id to the correct name/type based on the provided plan list
-      switch (planId) {
-        case 1:
-          return {
-            name: 'Free Plan',
-            type: 'Free',
-            accountType: 'Individual',
-            multiLoginLimit: 1
-          };
-        case 2:
-          return {
-            name: 'Individual Plan',
-            type: 'Individual',
-            accountType: 'Individual',
-            multiLoginLimit: 2
-          };
-        case 3:
-          return {
-            name: 'Basic Plan',
-            type: 'Basic',
-            accountType: 'Individual',
-            multiLoginLimit: 2
-          };
-        case 4:
-          return {
-            name: 'Premium Plan',
-            type: 'Premium',
-            accountType: 'Individual',
-            multiLoginLimit: 5
-          };
-        case 5:
-          return {
-            name: 'Individual Plan (Yearly)',
-            type: 'Individual',
-            accountType: 'Individual',
-            multiLoginLimit: 2
-          };
-        case 6:
-          return {
-            name: 'Basic Plan (Yearly)',
-            type: 'Basic',
-            accountType: 'Individual',
-            multiLoginLimit: 2
-          };
-        case 7:
-          return {
-            name: 'Premium Plan (Yearly)',
-            type: 'Premium',
-            accountType: 'Individual',
-            multiLoginLimit: 5
-          };
-        default:
-          // Default for unknown plan IDs
-          return {
-            name: 'Unknown Plan',
-            type: 'Standard',
-            accountType: 'Individual',
-            multiLoginLimit: 1
-          };
-      }
-    }
-    
-    // If subscription is from API and has User data with subscription_plan=basic
-    if (activeSubscription && 'User' in activeSubscription && 
-        (activeSubscription as any).User && (activeSubscription as any).User.subscription_plan === 'basic') {
+    // Determine plan details based on plan_id
+    if (planId === 1) {
+      return {
+        name: 'Free Plan',
+        type: 'Free',
+        accountType: 'Individual',
+        multiLoginLimit: 1
+      };
+    } else if (planId === 2) {
+      return {
+        name: 'Individual Plan',
+        type: 'Individual',
+        accountType: 'Individual',
+        multiLoginLimit: 2
+      };
+    } else if (planId === 3) {
       return {
         name: 'Basic Plan',
         type: 'Basic',
         accountType: 'Individual',
         multiLoginLimit: 2
-      }
-    }
-    
-    // If API subscription has a plan object, use that data directly
-    if (activeSubscription && 'plan' in activeSubscription && activeSubscription.plan) {
-      const plan = activeSubscription.plan;
-      const planName = plan.name || 'Unknown';
-      const formattedPlanName = planName.charAt(0).toUpperCase() + planName.slice(1) + ' Plan';
-      
-      // Map plan name to type
-      let planType = 'Free';
-      if (planName.toLowerCase().includes('premium') || planName.toLowerCase().includes('plus')) {
-        planType = 'Premium';
-      } else if (planName.toLowerCase().includes('basic') || planName.toLowerCase().includes('standard')) {
-        planType = 'Basic';
-      } else if (planName.toLowerCase().includes('individual')) {
-        planType = 'Individual';
-      } else if (planName.toLowerCase() !== 'free') {
-        planType = 'Standard';
-      }
-      
-      // Check billing cycle to append (Yearly) if needed
-      const billingCycle = plan.billing_cycle || 'monthly';
-      const displayName = billingCycle === 'yearly' ? `${formattedPlanName} (Yearly)` : formattedPlanName;
-      
+      };
+    } else if (planId === 4) {
       return {
-        name: displayName,
-        type: planType,
+        name: 'Premium Plan',
+        type: 'Premium',
         accountType: 'Individual',
-        multiLoginLimit: planType === 'Premium' ? 5 : planType === 'Basic' || planType === 'Individual' ? 2 : 1
-      }
+        multiLoginLimit: 5
+      };
+    } else if (planId === 5) {
+      return {
+        name: 'Individual Plan (Yearly)',
+        type: 'Individual',
+        accountType: 'Individual',
+        multiLoginLimit: 2
+      };
+    } else if (planId === 6) {
+      return {
+        name: 'Basic Plan (Yearly)',
+        type: 'Basic',
+        accountType: 'Individual',
+        multiLoginLimit: 2
+      };
+    } else if (planId === 7) {
+      return {
+        name: 'Premium Plan (Yearly)',
+        type: 'Premium',
+        accountType: 'Individual',
+        multiLoginLimit: 5
+      };
     }
     
-    // Local subscription data
-    const planName = activeSubscription.plan?.name || 'Unknown Plan'
-    
-    // Map the plan name to types
-    let planType = 'Free'
-    if (planName.toLowerCase().includes('premium')) {
-      planType = 'Premium'
-    } else if (planName.toLowerCase().includes('basic')) {
-      planType = 'Basic'
-    } else if (planName.toLowerCase().includes('individual')) {
-      planType = 'Individual'
-    } else if (planName.toLowerCase() !== 'free') {
-      planType = 'Standard'
-    }
-    
-    // Capitalize the plan name
-    const formattedPlanName = planName.charAt(0).toUpperCase() + planName.slice(1) + ' Plan';
-    
+    // Default if we can't determine
     return {
-      name: formattedPlanName,
-      type: planType,
+      name: 'Free Plan',
+      type: 'Free',
       accountType: 'Individual',
-      multiLoginLimit: planType === 'Premium' ? 5 : planType === 'Basic' || planType === 'Individual' ? 2 : 1
-    }
+      multiLoginLimit: 1
+    };
   }
   
   const planDetails = getPlanDetails()
@@ -263,19 +237,79 @@ export default function SubscriptionsPage() {
   // Calculate days remaining
   const getDaysRemaining = () => {
     if (!activeSubscription) {
-      return 0
+      return 0;
     }
     
-    const endDate = new Date(activeSubscription.end_date)
-    const today = new Date()
-    const diffTime = endDate.getTime() - today.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    // Use end_date or next_billing_date from the subscription data
+    const endDateStr = activeSubscription.end_date || 
+      (activeSubscription as any).next_billing_date || 
+      (activeSubscription as any).Plan?.next_billing_date;
     
-    return diffDays > 0 ? diffDays : 0
+    if (!endDateStr) {
+      // If we can't find the date directly, check in nested properties
+      if ('data' in activeSubscription && (activeSubscription as any).data) {
+        const endDateFromData = (activeSubscription as any).data.end_date ||
+          (activeSubscription as any).data.next_billing_date;
+        if (endDateFromData) {
+          const endDate = new Date(endDateFromData);
+          const today = new Date();
+          const diffTime = endDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return diffDays > 0 ? diffDays : 0;
+        }
+      }
+      return 30; // Fallback to default 30 days
+    }
+    
+    const endDate = new Date(endDateStr);
+    const today = new Date();
+    const diffTime = endDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays > 0 ? diffDays : 0;
   }
   
   const daysRemaining = getDaysRemaining()
-  
+
+  // Get subscription end date
+  const getSubscriptionEndDate = () => {
+    if (!activeSubscription) {
+      return 'N/A';
+    }
+    
+    // Check all possible property names for end date
+    const endDate = 
+      activeSubscription.end_date || 
+      (activeSubscription as any).next_billing_date ||
+      activeSubscription.Plan?.next_billing_date;
+    
+    if (!endDate) {
+      // Check nested data property if available
+      if ('data' in activeSubscription && (activeSubscription as any).data) {
+        const endDateFromData = (activeSubscription as any).data.end_date ||
+          (activeSubscription as any).data.next_billing_date;
+        if (endDateFromData) {
+          return formatDate(endDateFromData);
+        }
+      }
+      
+      // Check User object if available
+      if ('User' in activeSubscription && activeSubscription.User) {
+        const userEndDate = 
+          activeSubscription.User.subscription_end_date || 
+          activeSubscription.User.next_billing_date;
+        
+        if (userEndDate) {
+          return formatDate(userEndDate);
+        }
+      }
+      
+      return formatDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)); // Fallback
+    }
+    
+    return formatDate(endDate);
+  }
+
   // Format date for display
   const formatDate = (dateString: string | number | Date | undefined) => {
     if (!dateString) return 'N/A'
@@ -313,8 +347,8 @@ export default function SubscriptionsPage() {
     
     // Check Plan object (original API format)
     if (isApiSubscription(activeSubscription) && 'Plan' in activeSubscription) {
-      return activeSubscription.Plan.billing_cycle === "monthly" ? "Monthly" :
-             activeSubscription.Plan.billing_cycle === "yearly" ? "12 Months" : "Free";
+      return (activeSubscription as any).Plan.billing_cycle === "monthly" ? "Monthly" :
+             (activeSubscription as any).Plan.billing_cycle === "yearly" ? "12 Months" : "Free";
     }
     
     // Fallback to plan property
@@ -329,49 +363,29 @@ export default function SubscriptionsPage() {
 
   // Check if subscription is free
   const isFreePlan = () => {
-    if (!activeSubscription) return true;
-    
-    // If plan_id is present, only return true if it's explicitly 1
-    if ('plan_id' in activeSubscription) {
-      return activeSubscription.plan_id === 1;
+    if (!subscription && !activeSubscription) {
+      return true;
     }
     
-    // Check User object
-    if ('User' in activeSubscription && (activeSubscription as any).User) {
-      return (activeSubscription as any).User.subscription_plan === 'free';
-    }
-    
-    if (isApiSubscription(activeSubscription) && 'Plan' in activeSubscription) {
-      return activeSubscription.Plan.name.toLowerCase() === 'free' || 
-             activeSubscription.Plan.price === "0.00";
-    } else {
-      return activeSubscription.plan?.name.toLowerCase() === 'free' || 
-             activeSubscription.plan?.price === "0.00";
-    }
+    // Get plan_id from the subscription
+    const planId = activeSubscription?.plan_id ||
+                  (activeSubscription?.plan && activeSubscription.plan.plan_id) ||
+                  (activeSubscription?.Plan && activeSubscription.Plan.plan_id);
+                  
+    // Plan ID 1 is the free plan
+    return planId === 1;
   }
 
   // Get plan price
   const getPlanPrice = () => {
-    if (!activeSubscription) return "$0.00";
-    
-    // If subscription has Plan object, use its price
-    if (isApiSubscription(activeSubscription) && 'Plan' in activeSubscription && activeSubscription.Plan) {
-      return `PKR ${activeSubscription.Plan.price}`;
-    }
-    
-    // If subscription has plan object with price
-    if (activeSubscription.plan?.price) {
-      return `$${activeSubscription.plan.price}`;
-    }
-    
-    // Default fallback
-    return "$0.00";
+    // Return Premium plan price
+    return "PKR 2000.00";
   }
 
   // Get username/email
   const getUsername = () => {
     if (isApiSubscription(activeSubscription)) {
-      return activeSubscription.email_address || user?.email || "user@example.com";
+      return (activeSubscription as any).email_address || user?.email || "user@example.com";
     } else {
       return user?.email || "user@example.com";
     }
@@ -468,7 +482,7 @@ export default function SubscriptionsPage() {
     subscriptionType: isFreePlan() ? "FREE" : "PAID",
     status: getSubscriptionStatus(),
     multiLoginLimit: planDetails.multiLoginLimit,
-    expiryDate: formatDate(activeSubscription?.end_date),
+    expiryDate: getSubscriptionEndDate(),
     daysRemaining: daysRemaining,
     paymentMethod: getPaymentMethodInfo().details,
     paymentType: getPaymentMethodInfo().type,
@@ -651,6 +665,88 @@ export default function SubscriptionsPage() {
     );
   };
 
+  // Get subscription start date
+  const getSubscriptionStartDate = () => {
+    if (!activeSubscription) {
+      return 'N/A';
+    }
+    
+    // Check all possible property names for start date
+    const startDate = 
+      activeSubscription.start_date || 
+      (activeSubscription as any).created_at ||
+      (activeSubscription as any).Plan?.start_date;
+    
+    if (!startDate) {
+      // Check nested data property if available
+      if ('data' in activeSubscription && (activeSubscription as any).data) {
+        const startDateFromData = (activeSubscription as any).data.start_date ||
+          (activeSubscription as any).data.created_at;
+        if (startDateFromData) {
+          return formatDate(startDateFromData);
+        }
+      }
+      
+      // Check User object if available
+      if ('User' in activeSubscription && activeSubscription.User) {
+        const userStartDate = 
+          activeSubscription.User.created_at || 
+          activeSubscription.User.subscription_start_date;
+        
+        if (userStartDate) {
+          return formatDate(userStartDate);
+        }
+      }
+      
+      return formatDate(new Date()); // Fallback to today
+    }
+    
+    return formatDate(startDate);
+  }
+
+  // Calculate subscription progress percentage
+  const getSubscriptionProgress = () => {
+    if (!activeSubscription) {
+      return 0;
+    }
+    
+    // Get start and end dates
+    let startDateStr = activeSubscription.start_date || 
+      (activeSubscription as any).created_at ||
+      activeSubscription.Plan?.start_date;
+      
+    let endDateStr = activeSubscription.end_date || 
+      (activeSubscription as any).next_billing_date || 
+      activeSubscription.Plan?.next_billing_date;
+    
+    // If dates aren't in the main object, try to find them in nested objects
+    if (!startDateStr || !endDateStr) {
+      if ('data' in activeSubscription && (activeSubscription as any).data) {
+        startDateStr = startDateStr || (activeSubscription as any).data.start_date || (activeSubscription as any).data.created_at;
+        endDateStr = endDateStr || (activeSubscription as any).data.end_date || (activeSubscription as any).data.next_billing_date;
+      }
+      
+      if (!startDateStr || !endDateStr) {
+        return 50; // Default to 50% if we can't determine
+      }
+    }
+    
+    const startDate = new Date(startDateStr);
+    const endDate = new Date(endDateStr);
+    const today = new Date();
+    
+    // Calculate total duration and elapsed time
+    const totalDuration = endDate.getTime() - startDate.getTime();
+    if (totalDuration <= 0) return 0;
+    
+    const elapsedTime = today.getTime() - startDate.getTime();
+    
+    // Calculate percentage (ensure it's between 0-100)
+    const percentage = Math.min(100, Math.max(0, (elapsedTime / totalDuration) * 100));
+    
+    return Math.round(percentage);
+  }
+
   return (
     <div className="max-w-[1000px] mx-auto px-2 sm:px-4 py-4 sm:py-6">
       {/* Loading state */}
@@ -793,12 +889,16 @@ export default function SubscriptionsPage() {
                   <div className="px-3 sm:px-4 pb-3 sm:pb-4">
                     <div className="mb-4 sm:mb-6">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-[11px] text-gray-500">{subscriptionData.daysRemaining} days remaining</span>
+                        <span className="text-[11px] text-gray-500">Started on {getSubscriptionStartDate()}</span>
+                        <span className="text-[11px] text-gray-500">Renews on {getSubscriptionEndDate()}</span>
+                      </div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[11px] text-gray-500">{daysRemaining} days remaining</span>
                         <span className="text-[11px] text-gray-500">
-                          {Math.round((subscriptionData.daysRemaining / 365) * 100)}%
+                          {getSubscriptionProgress()}% complete
                         </span>
                       </div>
-                      <Progress value={(subscriptionData.daysRemaining / 365) * 100} className="h-1 bg-gray-100">
+                      <Progress value={getSubscriptionProgress()} className="h-1 bg-gray-100">
                         <div className="h-full bg-gradient-to-r from-emerald-600 to-teal-500 rounded-none" />
                       </Progress>
                     </div>

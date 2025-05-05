@@ -2,6 +2,18 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './auth-context';
+import { toast } from 'react-hot-toast';
+
+// Define plan types based on the provided plan data
+export interface PlanData {
+  plan_id: number;
+  name: string;
+  description: string;
+  price: string;
+  billing_cycle: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 // API Subscription types
 export interface SubscriptionTransaction {
@@ -11,20 +23,13 @@ export interface SubscriptionTransaction {
   payment_name: string;
 }
 
-export interface SubscriptionPlan {
-  name: string;
-  price: string;
-  billing_cycle: string;
-  description: string;
-}
-
 export interface SubscriptionUser {
   name: string;
   email: string;
   subscription_status: string;
-  subscription_plan: string;
-  subscription_end_date: string;
-  next_billing_date: string;
+  subscription_plan?: string;
+  subscription_end_date?: string;
+  next_billing_date?: string;
 }
 
 export interface ApiSubscription {
@@ -32,22 +37,79 @@ export interface ApiSubscription {
   user_id: number;
   plan_id: number;
   status: string;
-  duration: string;
   start_date: string;
   end_date: string;
   next_billing_date: string;
-  email_address: string;
-  mobile_no: string;
-  created_at: string;
-  Plan: SubscriptionPlan;
-  Transactions: SubscriptionTransaction[];
-  User: SubscriptionUser;
+  createdAt?: string;
+  updatedAt?: string;
+  plan?: PlanData;
+  Transactions?: SubscriptionTransaction[];
+  User?: SubscriptionUser;
 }
 
 export interface SubscriptionResponse {
   success: boolean;
   data: ApiSubscription;
 }
+
+// Define all available plans based on the provided data
+const AVAILABLE_PLANS: PlanData[] = [
+  {
+    plan_id: 1,
+    name: "Free",
+    description: "Free",
+    price: "0.00",
+    billing_cycle: "monthly"
+  },
+  {
+    plan_id: 2,
+    name: "Individual",
+    description: "Individual",
+    price: "500.00",
+    billing_cycle: "monthly"
+  },
+  {
+    plan_id: 3,
+    name: "Basic",
+    description: "Basic",
+    price: "800.00",
+    billing_cycle: "monthly"
+  },
+  {
+    plan_id: 4,
+    name: "Premium",
+    description: "Premium",
+    price: "2000.00",
+    billing_cycle: "monthly"
+  },
+  {
+    plan_id: 5,
+    name: "Individual",
+    description: "Individual",
+    price: "4800.00",
+    billing_cycle: "yearly"
+  },
+  {
+    plan_id: 6,
+    name: "Basic",
+    description: "Basic",
+    price: "7200.00",
+    billing_cycle: "yearly"
+  },
+  {
+    plan_id: 7,
+    name: "Premium",
+    description: "Premium",
+    price: "21600.00",
+    billing_cycle: "yearly"
+  }
+];
+
+// This function gets the correct plan details based on the plan_id
+const getPlanById = (planId: number): PlanData => {
+  const plan = AVAILABLE_PLANS.find(plan => plan.plan_id === planId);
+  return plan || AVAILABLE_PLANS[0]; // Default to Free plan if not found
+};
 
 // Union type to handle both API and local subscription formats
 export type SubscriptionData = ApiSubscription | any;
@@ -58,11 +120,16 @@ interface SubscriptionContextType {
   error: string | null;
   fetchSubscription: (userId: string, forceRefresh?: boolean) => Promise<any>;
   fetchActivePlan: (userId: string) => Promise<any>;
-  processPayment: (paymentData: any) => Promise<any>;
-  createTransaction: (transactionData: any) => Promise<any>;
-  forceSubscriptionRefresh: () => void;
+  getPlanDetails: () => {
+    name: string;
+    type: string;
+    cycle: string;
+    planId: number;
+  };
+  isActivePlan: (planId: number) => boolean;
+  refreshSubscription: () => Promise<void>;
   resetSubscription: () => void;
-  pageRefreshCount: number;
+  createTransaction?: (transactionData: any) => Promise<any>;
 }
 
 // Create the context
@@ -70,372 +137,346 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 
 // Provider component
 export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const [isFetching, setIsFetching] = useState<boolean>(false);
-  const [pageRefreshCount, setPageRefreshCount] = useState<number>(0);
-  const FETCH_THROTTLE_MS = 15000; // 15 seconds throttle
+  
+  // Throttle time for API calls (10 seconds)
+  const FETCH_THROTTLE_MS = 10000;
 
-  // Fetch subscription data
-  const fetchSubscription = async (userId: string, forceRefresh: boolean = false) => {
-    // Skip if already fetching to prevent parallel calls
-    if (isFetching) {
-      console.debug("Already fetching subscription, skipping duplicate call");
-      return;
+  // Initialize subscription when user changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchSubscription(user.id.toString());
     }
+  }, [user?.id]);
 
-    // Skip if throttled and not forcing refresh
-    const now = Date.now();
-    if (!forceRefresh && lastFetchTime && now - lastFetchTime < FETCH_THROTTLE_MS) {
-      console.debug(`Throttling subscription fetch (last fetch: ${new Date(lastFetchTime).toISOString()}, throttle: ${FETCH_THROTTLE_MS}ms)`);
-      return;
+  // Get the user's active plan
+  const fetchActivePlan = async (userId: string) => {
+    if (!token) {
+      console.error("No auth token available for subscription fetch");
+      return null;
     }
 
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.debug(`Fetching subscription for user ${userId}${forceRefresh ? ' (forced)' : ''}`);
-      }
-      
-      setIsFetching(true);
-      setLoading(true);
-      
-      // Add timestamp to prevent caching
-      const timestamp = Date.now();
-      const url = new URL(`/api/subscriptions/user/${userId}`, window.location.origin);
-      url.searchParams.append('_t', timestamp.toString());
-      
-      const response = await fetch(url.toString(), {
+      const activePlanUrl = `/api/subscriptions/active-plan/${userId}`;
+      const response = await fetch(activePlanUrl, {
         method: 'GET',
-        // Remove cache-control headers that can cause CORS issues
-        cache: 'no-store'
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
-      // Handle 404 errors gracefully - endpoint might not exist
-      if (response.status === 404) {
-        console.debug(`Subscription endpoint not found for user ${userId} (404 response)`);
-        console.debug("Attempting to use active plan endpoint instead");
-        
-        // Try to fetch from active plan endpoint instead
-        try {
-          const activePlanResult = await fetchActivePlan(userId);
-          if (activePlanResult) {
-            return activePlanResult;
-          }
-        } catch (err) {
-          console.debug("Failed to fetch from active plan endpoint as fallback");
+      if (!response.ok) {
+        if (response.status !== 404) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to fetch active plan");
         }
-        
         return null;
       }
 
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        // Process the plan data
+        processSubscriptionResponse(data);
+        return data.data;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("Error fetching active plan:", error);
+      return null;
+    }
+  };
+
+  // Process the subscription response
+  const processSubscriptionResponse = (response: any) => {
+    if (!response || !response.data) return;
+    
+    try {
+      const subscriptionData = response.data;
+      
+      // Better logging of the response data
+      console.log("Processing subscription response:", JSON.stringify(subscriptionData, null, 2));
+      
+      // Extract plan_id from the response
+      let planId = 1; // Default to Free plan
+      
+      if (subscriptionData.plan_id !== undefined) {
+        planId = Number(subscriptionData.plan_id);
+        console.log("Found plan_id directly:", planId);
+      } else if (subscriptionData.plan && subscriptionData.plan.plan_id !== undefined) {
+        planId = Number(subscriptionData.plan.plan_id);
+        console.log("Found plan_id in plan object:", planId);
+      } else if (subscriptionData.data && subscriptionData.data.plan_id !== undefined) {
+        planId = Number(subscriptionData.data.plan_id);
+        console.log("Found plan_id in nested data:", planId);
+      } else if (subscriptionData.subscription_id && subscriptionData.user_id) {
+        // This is a subscription record from the database
+        // Check if it has a plan_id property
+        if ('plan_id' in subscriptionData) {
+          planId = Number(subscriptionData.plan_id);
+          console.log("Found plan_id in subscription record:", planId);
+        }
+      }
+      
+      // Get complete plan details from our predefined plans
+      const planDetails = getPlanById(planId);
+      console.log("Using plan details:", planDetails);
+      
+      // Ensure the subscription has a plan object with full details
+      const processedSubscription = {
+        ...subscriptionData,
+        plan_id: planId,
+        plan: planDetails
+      };
+      
+      // Update the state with processed subscription
+      setSubscription(processedSubscription);
+      setError(null);
+      
+      return processedSubscription;
+    } catch (err) {
+      console.error("Error processing subscription response:", err);
+      setError("Failed to process subscription data");
+    }
+  };
+
+  // Fetch subscription data with throttling
+  const fetchSubscription = async (userId: string, forceRefresh: boolean = false) => {
+    // Skip if already fetching
+    if (isFetching) {
+      return subscription;
+    }
+    
+    // Skip if within throttle time unless forced
+    const now = Date.now();
+    if (!forceRefresh && lastFetchTime && now - lastFetchTime < FETCH_THROTTLE_MS) {
+      return subscription;
+    }
+    
+    try {
+      setIsFetching(true);
+      setLoading(true);
+      
+      // First try to get the active plan
+      const activePlan = await fetchActivePlan(userId);
+      
+      if (activePlan) {
+        // Already processed in fetchActivePlan
+        setLastFetchTime(Date.now());
+        return subscription;
+      }
+      
+      // Fallback to generic subscription endpoint
+      const response = await fetch(`/api/subscriptions/user/${userId}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      
       if (!response.ok) {
+        if (response.status === 404) {
+          // If no subscription found, set to Free plan
+          const freePlan = {
+            plan_id: 1,
+            status: 'active',
+            plan: getPlanById(1)
+          };
+          setSubscription(freePlan);
+          return freePlan;
+        }
+        
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to fetch subscription');
       }
-
+      
       const data = await response.json();
-      console.log('Subscription data fetched successfully:', data);
+      processSubscriptionResponse(data);
       
-      // Only update if we actually got data
-      if (data) {
-        // Check if data has a success field with data property (new API structure)
-        if (data.success && data.data) {
-          console.log('Setting subscription data from success.data structure:', data.data);
-          setSubscription(data.data);
-        } else {
-          // Old structure or direct data
-          setSubscription(data);
-        }
-        
-        setError(null);
-        setLastFetchTime(now);
-        
-        // Increment the refresh counter to notify components
-        setPageRefreshCount(prev => prev + 1);
-      }
-      
-      return data;
+      setLastFetchTime(Date.now());
+      return subscription;
     } catch (err: any) {
-      console.error('Error fetching subscription:', err);
-      setError(err.message || 'Failed to fetch subscription');
-      return null;
+      console.error("Subscription fetch error:", err);
+      setError(err.message || "Failed to fetch subscription data");
+      
+      // Set to Free plan on error
+      const freePlan = {
+        plan_id: 1,
+        status: 'active',
+        plan: getPlanById(1)
+      };
+      setSubscription(freePlan);
+      return freePlan;
     } finally {
       setLoading(false);
       setIsFetching(false);
     }
   };
 
-  // Fetch active plan directly from the API
-  const fetchActivePlan = async (userId: string | number) => {
-    // Ensure userId is a string
-    const userIdStr = userId?.toString();
+  // Force refresh the subscription data
+  const refreshSubscription = async () => {
+    if (!user?.id) return;
     
-    if (!userIdStr) {
-      console.error('User ID is required to fetch active plan');
-      return null;
-    }
-
     try {
       setLoading(true);
-      setError(null);
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.debug(`Fetching active plan for user ${userIdStr}`);
-      }
-      
-      // Add timestamp to prevent caching
-      const timestamp = Date.now();
-      const url = new URL(`/api/subscriptions/active-plan/${userIdStr}`, window.location.origin);
-      url.searchParams.append('_t', timestamp.toString());
-      
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        // Remove cache headers that can trigger CORS preflight issues
-        cache: 'no-store'
-      });
-
-      // Handle 404 gracefully - user might not have a subscription yet
-      if (response.status === 404) {
-        if (process.env.NODE_ENV === 'development') {
-          console.debug(`No active subscription found for user ${userIdStr} (404 response)`);
-        }
-        return null;
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch active plan');
-      }
-
-      const result = await response.json();
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('Active plan data fetched successfully');
-      }
-      
-      // Update subscription state with the active plan data
-      if (result.success && result.data) {
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('Setting subscription data from active plan');
-        }
-        
-        setSubscription(result.data);
-        setError(null);
-        setLastFetchTime(Date.now());
-        setPageRefreshCount(prev => prev + 1);
-        return result.data;
-      }
-      
-      return null;
-    } catch (err: any) {
-      console.error('Error fetching active plan:', err);
-      setError(err.message || 'Failed to fetch active plan');
-      return null;
+      await fetchSubscription(user.id.toString(), true);
+      toast.success("Subscription refreshed");
+    } catch (err) {
+      console.error("Failed to refresh subscription:", err);
+      toast.error("Failed to refresh subscription");
     } finally {
       setLoading(false);
     }
   };
 
-  // Process payment data
-  const processPayment = async (paymentData: any) => {
-    // Validate payment data to prevent unnecessary API calls
-    if (!paymentData || !paymentData.plan || !paymentData.transaction_id) {
-      console.log('We are missing payment data', paymentData , paymentData.plan , paymentData.transaction_id);
-      return { 
-        success: false, 
-        message: 'Invalid payment data. Missing required fields.' 
+  // Get formatted plan details for UI display
+  const getPlanDetails = () => {
+    if (!subscription) {
+      console.log("No subscription data available, returning Free plan");
+      return {
+        name: 'Free Plan',
+        type: 'Free',
+        cycle: 'monthly',
+        planId: 1
       };
     }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch('/api/subscriptions/payment/process', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(paymentData),
-      });
-
-      // Parse the response data - handle potential JSON parsing errors
-      let data;
-      try {
-        data = await response.json();
-      } catch (e) {
-        throw new Error('Invalid response from payment server');
-      }
-
-      if (!response.ok) {
-        throw new Error(data?.message || `Payment failed with status: ${response.status}`);
-      }
-      
-      // If successful and we have new subscription data, update the state
-      if (data?.success && data?.data) {
-        // Make sure we store the actual subscription data, not the wrapper
-        setSubscription(data.data);
-        // Update last fetch time to prevent immediate re-fetch
-        setLastFetchTime(Date.now());
-        // Also trigger the page refresh counter
-        setPageRefreshCount(prev => prev + 1);
-      }
-      
-      return data || { success: false, message: 'No data returned from payment server' };
-    } catch (error: any) {
-      console.error('Payment processing error:', error);
-      setError(error.message || 'An error occurred while processing payment');
-      return { 
-        success: false, 
-        message: error.message || 'An error occurred while processing payment' 
-      };
-    } finally {
-      setLoading(false);
+    
+    // Log the full subscription object for debugging
+    console.log("Subscription data for getPlanDetails:", JSON.stringify(subscription, null, 2));
+    
+    // Get plan ID from subscription object
+    let planId = 1;
+    
+    if (subscription.plan_id !== undefined) {
+      planId = Number(subscription.plan_id);
+      console.log("Using plan_id directly from subscription:", planId);
+    } else if (subscription.plan && subscription.plan.plan_id !== undefined) {
+      planId = Number(subscription.plan.plan_id);
+      console.log("Using plan_id from subscription.plan:", planId);
+    } else if ((subscription as any).data && (subscription as any).data.plan_id !== undefined) {
+      planId = Number((subscription as any).data.plan_id);
+      console.log("Using plan_id from subscription.data:", planId);
     }
+    
+    // Special case for Premium yearly plan (plan_id = 7)
+    if (planId === 7) {
+      console.log("Detected Premium yearly plan (ID 7), returning Premium plan details");
+      return {
+        name: 'Premium Plan (Yearly)',
+        type: 'Premium',
+        cycle: 'yearly',
+        planId: 7
+      };
+    }
+    
+    // Get full plan details
+    const plan = getPlanById(planId);
+    console.log("Plan details from getPlanById:", plan);
+    
+    // Format plan data for UI
+    const formattedPlan = {
+      name: `${plan.name} Plan${plan.billing_cycle === 'yearly' ? ' (Yearly)' : ''}`,
+      type: plan.name,
+      cycle: plan.billing_cycle,
+      planId: plan.plan_id
+    };
+    
+    console.log("Returning formatted plan details:", formattedPlan);
+    return formattedPlan;
   };
 
-  // Create transaction data
+  // Check if a specific plan is the active plan
+  const isActivePlan = (planId: number) => {
+    if (!subscription) return planId === 1; // Default to Free plan
+    
+    let activePlanId = 1;
+    
+    if (subscription.plan_id) {
+      activePlanId = Number(subscription.plan_id);
+    } else if (subscription.plan && subscription.plan.plan_id) {
+      activePlanId = Number(subscription.plan.plan_id);
+    }
+    
+    return activePlanId === planId;
+  };
+
+  // Reset subscription state (used for payment processing)
+  const resetSubscription = () => {
+    // Clear the subscription state
+    setSubscription(null);
+    setError(null);
+    setLastFetchTime(0);
+    console.log("Subscription state has been reset");
+  };
+
+  // Mock implementation for transaction creation
   const createTransaction = async (transactionData: any) => {
-    // Validate transaction data
-    if (!transactionData || !transactionData.user_id || !transactionData.plan_id) {
-      console.error('Missing required transaction data', transactionData);
-      return { 
-        success: false, 
-        message: 'Invalid transaction data. Missing required fields.' 
-      };
-    }
-
     try {
-      setLoading(true);
-      setError(null);
+      // If token is not available, return error
+      if (!token) {
+        console.error("No auth token available for transaction creation");
+        return { success: false, message: "Authentication required" };
+      }
 
+      // Call the existing transaction API endpoint
       const response = await fetch('/api/transactions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(transactionData),
+        body: JSON.stringify(transactionData)
       });
 
-      // Check the status code first
-      if (response.status === 404) {
-        console.error('Transaction API endpoint not found (404)');
-        return {
-          success: false,
-          message: 'The transaction service is currently unavailable. Your payment was successful, but transaction recording failed.'
-        };
-      }
-
-      // Parse the response data with error handling
-      let data;
-      try {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          data = await response.json();
-        } else {
-          // If not JSON, attempt to get text
-          try {
-            const textResponse = await response.text();
-            console.error('Non-JSON response from transaction API:', 
-              textResponse.substring(0, 200) + (textResponse.length > 200 ? '...' : ''));
-            
-            return {
-              success: false,
-              message: 'Server returned an invalid response format.',
-              debug: {
-                status: response.status,
-                contentType,
-                responsePreview: textResponse.substring(0, 100) + '...'
-              }
-            };
-          } catch (textError) {
-            console.error('Failed to read response text:', textError);
-            throw new Error('Invalid response format from transaction server');
-          }
-        }
-      } catch (e) {
-        console.error('Error parsing transaction response:', e);
-        throw new Error('Invalid response from transaction server');
-      }
-
       if (!response.ok) {
-        console.error('Transaction API error status:', response.status, data);
-        throw new Error(data?.message || `Transaction creation failed with status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create transaction");
+      }
+
+      const data = await response.json();
+      
+      // If transaction was successful, refresh subscription data
+      if (data.success) {
+        // Force refresh subscription after successful transaction
+        if (user?.id) {
+          await fetchSubscription(user.id.toString(), true);
+        }
       }
       
-      console.log('Transaction created successfully:', data);
-      
-      // If the API returns the transaction data directly (not wrapped with success flag)
-      // Transform it to include a success flag for consistent interface
-      if (data && !data.hasOwnProperty('success') && data.transaction_id) {
-        return {
-          success: true,
-          data: data
-        };
-      }
-      
-      return data || { success: false, message: 'No data returned from transaction server' };
+      return data;
     } catch (error: any) {
-      console.error('Transaction creation error:', error);
-      setError(error.message || 'An error occurred while creating transaction');
+      console.error("Error creating transaction:", error);
       return { 
         success: false, 
-        message: error.message || 'An error occurred while creating transaction' 
+        message: error.message || "Failed to create transaction record"
       };
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Force subscription refresh
-  const forceSubscriptionRefresh = () => {
-    if (user?.id) {
-      console.log("Manually forcing subscription refresh");
-      fetchSubscription(user.id, true);
-    }
-  };
-
-  // Reset subscription state
-  const resetSubscription = () => {
-    console.log("Resetting subscription state");
-    setSubscription(null);
-    setLoading(false);
-    setError(null);
-    setLastFetchTime(0);
-    setIsFetching(false);
-    setPageRefreshCount(prev => prev + 1);
-  };
-
-  // Initial fetch when user changes - completely disabled
-  useEffect(() => {
-    // Intentionally empty to prevent automatic fetching
-    // If subscription data is needed, components should explicitly call fetchActivePlan
-  }, []);
-
-  const value = {
+  const contextValue: SubscriptionContextType = {
     subscription,
     loading,
     error,
     fetchSubscription,
     fetchActivePlan,
-    processPayment,
-    createTransaction,
-    forceSubscriptionRefresh,
+    getPlanDetails,
+    isActivePlan,
+    refreshSubscription,
     resetSubscription,
-    pageRefreshCount
+    createTransaction
   };
 
   return (
-    <SubscriptionContext.Provider value={value}>
+    <SubscriptionContext.Provider value={contextValue}>
       {children}
     </SubscriptionContext.Provider>
   );
 };
 
-// Hook for using the subscription context
+// Hook to use the subscription context
 export const useSubscription = () => {
   const context = useContext(SubscriptionContext);
   if (context === undefined) {

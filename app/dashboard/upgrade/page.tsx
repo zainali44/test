@@ -30,7 +30,7 @@ import Link from "next/link"
 
 export default function UpgradePage() {
     const { user } = useAuth()
-    const { subscription, forceSubscriptionRefresh } = useSubscription()
+    const { subscription } = useSubscription()
     const router = useRouter()
     const [selectedPlan, setSelectedPlan] = useState<"individual" | "basic" | "premium">("premium")
     const [selectedDuration, setSelectedDuration] = useState<"yearly" | "monthly">("yearly")
@@ -119,185 +119,101 @@ export default function UpgradePage() {
 
     // Check if user has a free plan
     const isFreePlan = () => {
-        console.log("Checking if user has free plan, subscription:", subscription);
-        console.log("User Plan:", user?.subscriptions);
+        if (!subscription && !user?.subscriptions) {
+            return true;
+        }
         
-        // First check subscription data from API
-        if (subscription) {
-            const subscriptionData = (subscription as any).data || subscription;
+        // Extract the plan data from subscription
+        const subscriptionData = (subscription as any)?.data || subscription;
+        
+        if (subscriptionData) {
+            // Get plan_id
+            const planId = subscriptionData.plan_id || 
+                         (subscriptionData.plan && subscriptionData.plan.plan_id) || 
+                         (subscriptionData.Plan && subscriptionData.Plan.plan_id);
             
-            // If we have a plan_id directly in the data, check it
-            if (subscriptionData.plan_id !== undefined) {
-                return subscriptionData.plan_id === 1; // Only plan ID 1 is free
-            }
-            
-            // Check if it's in a Plan object
-            if (subscriptionData.Plan) {
-                if ((subscriptionData.Plan as any).id !== undefined) {
-                    return (subscriptionData.Plan as any).id === 1;
-                }
-                // Fallback to name check if no id
-                return subscriptionData.Plan.name?.toLowerCase() === 'free';
-            }
-            
-            // Check if it's in User object
-            if (subscriptionData.User) {
-                if (subscriptionData.User.subscription_plan_id !== undefined) {
-                    return subscriptionData.User.subscription_plan_id === 1;
-                }
-                // Fallback to name check
-                return subscriptionData.User.subscription_plan?.toLowerCase() === 'free';
+            // Plan ID 1 is the free plan
+            return planId === 1;
+        }
+        
+        // Check user object
+        if (user?.subscriptions && Array.isArray(user.subscriptions) && user.subscriptions.length > 0) {
+            const activeSubscription = user.subscriptions.find(sub => sub.status === 'active');
+            if (activeSubscription) {
+                // Get plan_id
+                const planId = activeSubscription.plan_id || 
+                             (activeSubscription.plan && activeSubscription.plan.plan_id);
+                
+                // Plan ID 1 is the free plan
+                return planId === 1;
             }
         }
         
-        // User object fallback
-        if (!user || !user.subscriptions || !Array.isArray(user.subscriptions) || user.subscriptions.length === 0) {
-            return true; // No subscription means free plan
-        }
-        
-        const activeSubscription = user.subscriptions.find(sub => sub.status === 'active');
-        if (!activeSubscription) {
-            return true; // No active subscription means free plan
-        }
-        
-        // Check plan_id in the active subscription
-        if (activeSubscription.plan_id !== undefined) {
-            return activeSubscription.plan_id === 1;
-        }
-        
-        // Check plan object
-        if (activeSubscription.plan) {
-            if ((activeSubscription.plan as any).id !== undefined) {
-                return (activeSubscription.plan as any).id === 1;
-            }
-            return activeSubscription.plan.name?.toLowerCase() === 'free';
-        }
-        
-        return true; // Default to free plan if we can't determine
+        // Default to free plan if we can't determine
+        return true;
     }
 
     // Get current plan from user subscription data
     const getCurrentPlan = (): { name: string; type: 'individual' | 'basic' | 'premium' | null } => {
-        // Check subscription data from API first
-        if (subscription) {
-            const subscriptionData = (subscription as any).data || subscription;
-            
-            // Check plan_id in the subscription data
-            if (subscriptionData.plan_id !== undefined) {
-                // Free plan
-                if (subscriptionData.plan_id === 1) return { name: 'Free Plan', type: null };
-                
-                // Monthly plans
-                if (subscriptionData.plan_id === 2) return { name: 'Individual Plan', type: 'individual' };
-                if (subscriptionData.plan_id === 3) return { name: 'Basic Plan', type: 'basic' };
-                if (subscriptionData.plan_id === 4) return { name: 'Premium Plan', type: 'premium' };
-                
-                // Yearly plans
-                if (subscriptionData.plan_id === 5) return { name: 'Individual Plan (Yearly)', type: 'individual' };
-                if (subscriptionData.plan_id === 6) return { name: 'Basic Plan (Yearly)', type: 'basic' };
-                if (subscriptionData.plan_id === 7) return { name: 'Premium Plan (Yearly)', type: 'premium' };
-            }
-            
-            // Check Plan object
-            if (subscriptionData.Plan) {
-                if ((subscriptionData.Plan as any).id !== undefined) {
-                    // Free plan
-                    if ((subscriptionData.Plan as any).id === 1) return { name: 'Free Plan', type: null };
-                    
-                    // Monthly plans
-                    if ((subscriptionData.Plan as any).id === 2) return { name: 'Individual Plan', type: 'individual' };
-                    if ((subscriptionData.Plan as any).id === 3) return { name: 'Basic Plan', type: 'basic' };
-                    if ((subscriptionData.Plan as any).id === 4) return { name: 'Premium Plan', type: 'premium' };
-                    
-                    // Yearly plans
-                    if ((subscriptionData.Plan as any).id === 5) return { name: 'Individual Plan (Yearly)', type: 'individual' };
-                    if ((subscriptionData.Plan as any).id === 6) return { name: 'Basic Plan (Yearly)', type: 'basic' };
-                    if ((subscriptionData.Plan as any).id === 7) return { name: 'Premium Plan (Yearly)', type: 'premium' };
-                }
-                
-                // Fallback to name-based check
-                const planName = subscriptionData.Plan.name || 'Free';
-                if (planName.toLowerCase().includes('premium') || planName.toLowerCase().includes('plus')) return { name: 'Premium Plan', type: 'premium' };
-                if (planName.toLowerCase().includes('basic') || planName.toLowerCase().includes('standard')) return { name: 'Basic Plan', type: 'basic' };
-                if (planName.toLowerCase() !== 'free') return { name: planName + ' Plan', type: 'individual' };
-                return { name: 'Free Plan', type: null };
-            }
-            
-            // Check User object
-            if (subscriptionData.User) {
-                if (subscriptionData.User.subscription_plan_id !== undefined) {
-                    // Free plan
-                    if (subscriptionData.User.subscription_plan_id === 1) return { name: 'Free Plan', type: null };
-                    
-                    // Monthly plans
-                    if (subscriptionData.User.subscription_plan_id === 2) return { name: 'Individual Plan', type: 'individual' };
-                    if (subscriptionData.User.subscription_plan_id === 3) return { name: 'Basic Plan', type: 'basic' };
-                    if (subscriptionData.User.subscription_plan_id === 4) return { name: 'Premium Plan', type: 'premium' };
-                    
-                    // Yearly plans
-                    if (subscriptionData.User.subscription_plan_id === 5) return { name: 'Individual Plan (Yearly)', type: 'individual' };
-                    if (subscriptionData.User.subscription_plan_id === 6) return { name: 'Basic Plan (Yearly)', type: 'basic' };
-                    if (subscriptionData.User.subscription_plan_id === 7) return { name: 'Premium Plan (Yearly)', type: 'premium' };
-                }
-                
-                // Fallback to name-based check
-                const planName = subscriptionData.User.subscription_plan || 'Free';
-                if (planName.toLowerCase().includes('premium')) return { name: 'Premium Plan', type: 'premium' };
-                if (planName.toLowerCase().includes('basic')) return { name: 'Basic Plan', type: 'basic' };
-                if (planName.toLowerCase() !== 'free') return { name: planName + ' Plan', type: 'individual' };
-                return { name: 'Free Plan', type: null };
-            }
-        }
-        
-        // User object fallback
-        if (!user || !user.subscriptions || !Array.isArray(user.subscriptions) || user.subscriptions.length === 0) {
+        if (!subscription && !user?.subscriptions) {
             return { name: 'Free Plan', type: null };
         }
         
-        const activeSubscription = user.subscriptions.find(sub => sub.status === 'active');
-        if (!activeSubscription) {
-            return { name: 'Free Plan', type: null };
-        }
+        // Extract the plan data from subscription
+        const subscriptionData = (subscription as any)?.data || subscription;
         
-        // Check plan_id in the active subscription
-        if (activeSubscription.plan_id !== undefined) {
-            // Free plan
-            if (activeSubscription.plan_id === 1) return { name: 'Free Plan', type: null };
+        if (subscriptionData) {
+            // Get plan_id
+            const planId = subscriptionData.plan_id || 
+                         (subscriptionData.plan && subscriptionData.plan.plan_id) || 
+                         (subscriptionData.Plan && subscriptionData.Plan.plan_id);
             
-            // Monthly plans
-            if (activeSubscription.plan_id === 2) return { name: 'Individual Plan', type: 'individual' };
-            if (activeSubscription.plan_id === 3) return { name: 'Basic Plan', type: 'basic' };
-            if (activeSubscription.plan_id === 4) return { name: 'Premium Plan', type: 'premium' };
-            
-            // Yearly plans
-            if (activeSubscription.plan_id === 5) return { name: 'Individual Plan (Yearly)', type: 'individual' };
-            if (activeSubscription.plan_id === 6) return { name: 'Basic Plan (Yearly)', type: 'basic' };
-            if (activeSubscription.plan_id === 7) return { name: 'Premium Plan (Yearly)', type: 'premium' };
-        }
-        
-        // Check plan object
-        if (activeSubscription.plan) {
-            if ((activeSubscription.plan as any).id !== undefined) {
-                // Free plan
-                if ((activeSubscription.plan as any).id === 1) return { name: 'Free Plan', type: null };
-                
-                // Monthly plans
-                if ((activeSubscription.plan as any).id === 2) return { name: 'Individual Plan', type: 'individual' };
-                if ((activeSubscription.plan as any).id === 3) return { name: 'Basic Plan', type: 'basic' };
-                if ((activeSubscription.plan as any).id === 4) return { name: 'Premium Plan', type: 'premium' };
-                
-                // Yearly plans
-                if ((activeSubscription.plan as any).id === 5) return { name: 'Individual Plan (Yearly)', type: 'individual' };
-                if ((activeSubscription.plan as any).id === 6) return { name: 'Basic Plan (Yearly)', type: 'basic' };
-                if ((activeSubscription.plan as any).id === 7) return { name: 'Premium Plan (Yearly)', type: 'premium' };
+            // Determine plan based on plan_id
+            if (planId === 1) {
+                return { name: 'Free Plan', type: null };
+            } else if (planId === 2) {
+                return { name: 'Individual Plan', type: 'individual' };
+            } else if (planId === 3) {
+                return { name: 'Basic Plan', type: 'basic' };
+            } else if (planId === 4) {
+                return { name: 'Premium Plan', type: 'premium' };
+            } else if (planId === 5) {
+                return { name: 'Individual Plan (Yearly)', type: 'individual' };
+            } else if (planId === 6) {
+                return { name: 'Basic Plan (Yearly)', type: 'basic' };
+            } else if (planId === 7) {
+                return { name: 'Premium Plan (Yearly)', type: 'premium' };
             }
-            
-            const planName = activeSubscription.plan.name || 'Free';
-            if (planName.toLowerCase().includes('premium') || planName.toLowerCase().includes('plus')) return { name: 'Premium Plan', type: 'premium' };
-            if (planName.toLowerCase().includes('basic') || planName.toLowerCase().includes('standard')) return { name: 'Basic Plan', type: 'basic' };
-            if (planName.toLowerCase() !== 'free') return { name: planName + ' Plan', type: 'individual' };
         }
         
+        // Check user object
+        if (user?.subscriptions && Array.isArray(user.subscriptions) && user.subscriptions.length > 0) {
+            const activeSubscription = user.subscriptions.find(sub => sub.status === 'active');
+            if (activeSubscription) {
+                // Get plan_id
+                const planId = activeSubscription.plan_id || 
+                             (activeSubscription.plan && activeSubscription.plan.plan_id);
+                
+                // Determine plan based on plan_id
+                if (planId === 1) {
+                    return { name: 'Free Plan', type: null };
+                } else if (planId === 2) {
+                    return { name: 'Individual Plan', type: 'individual' };
+                } else if (planId === 3) {
+                    return { name: 'Basic Plan', type: 'basic' };
+                } else if (planId === 4) {
+                    return { name: 'Premium Plan', type: 'premium' };
+                } else if (planId === 5) {
+                    return { name: 'Individual Plan (Yearly)', type: 'individual' };
+                } else if (planId === 6) {
+                    return { name: 'Basic Plan (Yearly)', type: 'basic' };
+                } else if (planId === 7) {
+                    return { name: 'Premium Plan (Yearly)', type: 'premium' };
+                }
+            }
+        }
+        
+        // Default to free plan if we can't determine
         return { name: 'Free Plan', type: null };
     }
 
@@ -418,7 +334,6 @@ export default function UpgradePage() {
             if (user?.id) {
                 // First reset any stale subscription data
                 console.log("Resetting subscription state before payment redirect");
-                forceSubscriptionRefresh();
             }
             
             // Get the plan amount based on selection
@@ -861,3 +776,4 @@ export default function UpgradePage() {
         </div>
     )
 }
+

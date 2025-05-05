@@ -9,8 +9,23 @@
  */
 export async function validateTokenWithServer(token: string) {
   try {
-    // Use relative URL to avoid CORS issues with environment variables
-    const response = await fetch('/api/auth/validate-token', {
+    // Get the full URL for API requests
+    let baseUrl = '';
+    
+    // Check if we're running on the client side
+    if (typeof window !== 'undefined') {
+      // Use current window location for client-side requests
+      baseUrl = window.location.origin;
+    } else {
+      // For server-side, use environment variable or default
+      baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    }
+    
+    // Use absolute URL to avoid parsing errors
+    const validationUrl = `${baseUrl}/api/auth/validate-token`;
+    console.log("Calling token validation endpoint:", validationUrl);
+    
+    const response = await fetch(validationUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

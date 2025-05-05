@@ -15,7 +15,19 @@ interface JWTPayload {
 
 // Get base API URL from environment
 export const getApiBaseUrl = () => {
-  return process.env.NEXT_API || 'http://localhost:8000';
+  const apiUrl = process.env.NEXT_API || 'http://localhost:8000';
+  
+  // Make sure the URL has a protocol
+  if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
+    return apiUrl;
+  }
+  
+  // Add https:// if no protocol specified (production), or http:// for localhost
+  if (apiUrl.includes('localhost')) {
+    return `http://${apiUrl}`;
+  }
+  
+  return `https://${apiUrl}`;
 };
 
 // Helper function to get token either from parameter or from auth utility
@@ -317,7 +329,22 @@ export async function validateToken(token: string) {
     
     // Skip local API validation and use server endpoint directly
     console.log("Directly validating token with server API");
-    const serverApiUrl = `${apiBaseUrl}/users/validate-token`;
+    
+    // Make sure the server API URL is correctly formed with protocol
+    // Ensure apiBaseUrl has protocol (http:// or https://)
+    let serverApiUrl = '';
+    if (apiBaseUrl) {
+      if (apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://')) {
+        serverApiUrl = `${apiBaseUrl}/users/validate-token`;
+      } else {
+        // Add https:// if no protocol is specified
+        serverApiUrl = `https://${apiBaseUrl}/users/validate-token`;
+      }
+    } else {
+      // Fallback to localhost if no API base URL is available
+      serverApiUrl = 'http://localhost:8000/users/validate-token';
+    }
+    
     console.log("Calling server endpoint:", serverApiUrl);
     
     try {

@@ -21,7 +21,7 @@ export async function GET(
     if (!apiUrl) {
       console.error('API URL not configured in environment variables');
       // Return fallback data instead of error
-      return provideFallbackData(userId);
+      return provideFallbackData(userId, request);
     }
 
     // Fetch subscription data from the external API with timeout
@@ -32,6 +32,12 @@ export async function GET(
     const timestamp = Date.now();
     const url = new URL(`${apiUrl}/subscriptions/user/${userId}`);
     url.searchParams.append('_t', timestamp.toString());
+    
+    // Copy billing_cycle param if present
+    const reqUrl = new URL(request.url);
+    if (reqUrl.searchParams.has('billing_cycle')) {
+      url.searchParams.append('billing_cycle', reqUrl.searchParams.get('billing_cycle')!);
+    }
 
     try {
       const response = await fetch(url.toString(), {
@@ -54,7 +60,7 @@ export async function GET(
 
       if (!response.ok) {
         // Return fallback data instead of error response
-        return provideFallbackData(userId);
+        return provideFallbackData(userId, request);
       }
 
       try {
@@ -62,7 +68,7 @@ export async function GET(
       } catch (error) {
         console.error('Error parsing subscription data:', error);
         // Return fallback data if parsing fails
-        return provideFallbackData(userId);
+        return provideFallbackData(userId, request);
       }
 
       // Set no-cache headers on the response
@@ -84,45 +90,68 @@ export async function GET(
       }
       
       // Return fallback data instead of error
-      return provideFallbackData(userId);
+      return provideFallbackData(userId, request);
     }
   } catch (error: any) {
     console.error('Subscription API error:', error);
     // Return fallback data instead of error
-    return provideFallbackData(userId);
+    return provideFallbackData(userId, request);
   }
 }
 
 // Helper function to provide fallback data
-function provideFallbackData(userId: string) {
+function provideFallbackData(userId: string, req?: NextRequest) {
+  // Check if we should use yearly billing cycle
+  let useYearly = false;
+  
+  if (req) {
+    const url = new URL(req.url);
+    useYearly = url.searchParams.get('billing_cycle') === 'yearly';
+  }
+  
+  const premiumPlan = useYearly ? {
+    subscription_id: 7,
+    user_id: userId,
+    plan_id: 7,
+    status: "active",
+    start_date: new Date().toISOString(),
+    end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), 
+    next_billing_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    plan: {
+      plan_id: 7,
+      name: "Premium",
+      description: "Premium",
+      price: "21600.00",
+      billing_cycle: "yearly"
+    }
+  } : {
+    subscription_id: 4,
+    user_id: userId,
+    plan_id: 4,
+    status: "active",
+    start_date: new Date().toISOString(),
+    end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), 
+    next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    plan: {
+      plan_id: 4,
+      name: "Premium",
+      description: "Premium",
+      price: "2000.00",
+      billing_cycle: "monthly"
+    }
+  };
+  
   return NextResponse.json({
     success: true,
     message: "User subscription data (fallback)",
     data: {
       id: 1,
       user_id: userId,
-      subscriptions: [
-        {
-          id: Number(userId) + 100,
-          subscription_id: Number(userId) + 100,
-          user_id: userId,
-          plan_id: 1,
-          status: 'active',
-          start_date: new Date().toISOString(),
-          end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), 
-          next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          Plan: {
-            id: 1,
-            name: 'Basic',
-            description: 'Basic VPN Plan',
-            price: 9.99,
-            billing_cycle: 'monthly',
-            features: ['Basic VPN access', '3 devices', 'Standard speed']
-          }
-        }
-      ]
+      subscriptions: [premiumPlan]
     }
   });
 } 

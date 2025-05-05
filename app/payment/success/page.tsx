@@ -170,6 +170,9 @@ function PaymentSuccessContent() {
             console.log("Sending transaction data:", JSON.stringify(transactionData));
             
             // Create transaction first
+            if (!createTransaction) {
+              throw new Error("Transaction creation function not available");
+            }
             const transactionResult = await createTransaction(transactionData);
             console.log("Transaction creation result:", transactionResult);
             

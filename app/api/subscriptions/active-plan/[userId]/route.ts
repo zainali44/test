@@ -5,114 +5,89 @@ export async function GET(
   { params }: { params: { userId: string } }
 ) {
   try {
-    const userId = params.userId;
+    // Get the user ID from the dynamic route
+    const { userId } = params;
     
     if (!userId) {
       return NextResponse.json(
-        { success: false, message: 'User ID is required' },
+        { 
+          success: false, 
+          message: "User ID is required" 
+        },
         { status: 400 }
       );
     }
-
-    // Get API URL from environment variable
-    const apiUrl = process.env.NEXT_API || '';
     
-    if (!apiUrl) {
-      console.error('API URL not configured in environment variables');
+    // Get the API base URL
+    const apiBaseUrl = process.env.NEXT_API || 'http://localhost:8000';
+    const apiUrl = `${apiBaseUrl}/users/active-plan/${userId}`;
+    
+    // Get the authorization header from the request
+    const authHeader = request.headers.get('Authorization');
+    
+    console.log(`Fetching active plan for user ${userId}`);
+    
+    // Make the request to the external API
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        // Only include Authorization if it exists
+        ...(authHeader ? { 'Authorization': authHeader } : {}),
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store'
+    });
+    
+    // If the response is 404, return a clean "not found" response
+    if (response.status === 404) {
       return NextResponse.json(
-        { success: false, message: 'API URL is not configured' },
-        { status: 500 }
-      );
-    }
-
-    // Construct the URL using the format from the server logs
-    console.log("Fetching active plan for user:", userId);
-    const fullUrl = `${apiUrl}/users/active-plan/${userId}`;
-    console.log("Fetching active plan from:", fullUrl);
-
-    // Fetch the active plan
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    
-    try {
-      const response = await fetch(fullUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
+        { 
+          success: false, 
+          message: "No active plan found for this user" 
         },
-        signal: controller.signal,
-        cache: 'no-store'
-      });
-
-      // Clear the timeout
-      clearTimeout(timeoutId);
-
-      // Parse the response
-      let data;
-      try {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          data = await response.json();
-        } else {
-          // Handle non-JSON response
-          const text = await response.text();
-          console.error(`Non-JSON response from active plan API:`, text.substring(0, 200));
-          return NextResponse.json(
-            { 
-              success: false, 
-              message: 'Received non-JSON response from API',
-              status: response.status
-            },
-            { status: 502 }
-          );
-        }
-      } catch (error) {
-        console.error('Error parsing API response:', error);
-        return NextResponse.json(
-          { success: false, message: 'Invalid response from API' },
-          { status: 502 }
-        );
-      }
-
-      if (!response.ok) {
-        console.error('Active plan API error:', data);
-        return NextResponse.json(
-          { 
-            success: false, 
-            message: data?.message || `Failed to fetch active plan with status: ${response.status}`,
-            status: response.status 
-          },
-          { status: response.status }
-        );
-      }
-
-      // Wrap the successful response
-      return NextResponse.json({
-        success: true,
-        data: data
-      });
-    } catch (fetchError: any) {
-      clearTimeout(timeoutId);
-      
-      // Handle fetch abort/timeout
-      if (fetchError.name === 'AbortError') {
-        console.error('Active plan API request timed out');
-        return NextResponse.json(
-          { success: false, message: 'Request timed out' },
-          { status: 504 }
-        );
-      }
-      
-      console.error('Active plan API fetch error:', fetchError);
-      return NextResponse.json(
-        { success: false, message: 'Failed to connect to API server' },
-        { status: 502 }
+        { status: 404 }
       );
     }
-  } catch (error) {
-    console.error('Error fetching active plan:', error);
+    
+    // If the API call failed, return the error
+    if (!response.ok) {
+      // Try to parse the error message from the response
+      let errorMessage = "Failed to fetch active plan";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        // If we can't parse the response as JSON, use the status text
+        errorMessage = response.statusText || errorMessage;
+      }
+      
+      console.error(`Error fetching active plan: ${errorMessage}`);
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: errorMessage 
+        },
+        { status: response.status }
+      );
+    }
+    
+    // Try to parse the response as JSON
+    const data = await response.json();
+    
+    // Return the subscription data
+    return NextResponse.json({
+      success: true,
+      data: data
+    });
+  } catch (error: any) {
+    console.error('Error in active-plan API route:', error);
+    
     return NextResponse.json(
-      { success: false, message: 'Failed to fetch active plan' },
+      { 
+        success: false, 
+        message: error.message || "Internal server error" 
+      },
       { status: 500 }
     );
   }

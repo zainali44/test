@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
       });
 
       console.log("Transactions API Response:", response)
-      console.log("Transactions API Response Data:", await response.json())
       console.log("Transactions API URL:", `${apiUrl}/transactions`)
+      
       // Clear the timeout
       clearTimeout(timeoutId);
 
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           responseData = await response.json();
+          console.log("Transactions API Response Data:", responseData)
         } else {
           // If the response is not JSON, get the text and provide a meaningful error
           const responseText = await response.text();

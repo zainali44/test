@@ -3,19 +3,81 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Download, Info, Shield, Check, ExternalLink, Lock, Unlock } from "lucide-react"
+import { Download, Info, Shield, Check, ExternalLink, Lock, Unlock, X } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/app/contexts/auth-context"
 import { UpgradeDialog } from "@/components/upgrade-dialog"
 import { useSubscription } from "@/app/contexts/subscription-context"
+import { toast } from "react-hot-toast"
+
+// After the imports, add this diagnostic component
+function AuthDebugButton({ onDebugComplete }: { onDebugComplete: (result: any) => void }) {
+  const [loading, setLoading] = useState(false);
+  const [debugType, setDebugType] = useState<'auth' | 'token'>('auth');
+  
+  const checkAuthStatus = async () => {
+    setLoading(true);
+    try {
+      // Choose which endpoint to use based on debug type
+      const endpoint = debugType === 'auth' ? '/api/auth-status' : '/api/debug-token';
+      
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      const data = await response.json();
+      onDebugComplete(data);
+    } catch (error) {
+      console.error('Auth check error:', error);
+      onDebugComplete({ error: error instanceof Error ? error.message : 'Unknown error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <div className="flex flex-col space-y-2">
+      <div className="flex space-x-2">
+        <Button
+          variant={debugType === 'auth' ? 'default' : 'outline'}
+          size="sm"
+          className="text-xs"
+          onClick={() => setDebugType('auth')}
+        >
+          Auth Status
+        </Button>
+        <Button
+          variant={debugType === 'token' ? 'default' : 'outline'}
+          size="sm"
+          className="text-xs"
+          onClick={() => setDebugType('token')}
+        >
+          Token Debug
+        </Button>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-xs text-gray-500 hover:text-gray-700"
+        onClick={checkAuthStatus}
+        disabled={loading}
+      >
+        {loading ? 'Checking...' : `Check ${debugType === 'auth' ? 'Auth Status' : 'Token Status'}`}
+      </Button>
+    </div>
+  );
+}
 
 export default function DownloadsPage() {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const { subscription } = useSubscription()
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
   const [selectedDownload, setSelectedDownload] = useState("")
+  const [authDebugResult, setAuthDebugResult] = useState<any>(null)
+  const [showAuthDebug, setShowAuthDebug] = useState(false)
 
   // Check if user has a free plan
   const isFreePlan = () => {
@@ -48,7 +110,7 @@ export default function DownloadsPage() {
            (activeSubscription.plan?.price === "0.00");
   }
 
-  const handleDownload = (platform: string) => {
+  const handleDownload = async (platform: string) => {
     // Check if user has a free plan
     if (isFreePlan()) {
       setSelectedDownload(platform)
@@ -58,27 +120,121 @@ export default function DownloadsPage() {
     
     // For paid plans, proceed with download
     console.log(`Downloading for ${platform}`)
-    // You could also track downloads with analytics here
-    // Here you'd implement the actual download logic
     
     // Example download URL construction based on platform
     let downloadUrl = "";
+    let useSecureApi = false;
+    let useDirectUrl = false;
+    
     switch(platform) {
       case "Windows":
-        downloadUrl = "/downloads/securevpn-windows-latest.exe";
+        // Route all premium downloads through the secure API
+        downloadUrl = "securevpn-windows-latest.exe";
+        useSecureApi = true;
         break;
       case "Android":
-        downloadUrl = "/downloads/securevpn-android-latest.apk";
+        // Route all premium downloads through the secure API
+        downloadUrl = "securevpn-android-latest.apk";
+        useSecureApi = true;
         break;
       case "OpenVPN Config":
-        downloadUrl = "/downloads/securevpn-openvpn-configs.zip";
+        // Use direct Firebase Storage URL for OpenVPN config
+        downloadUrl = "https://firebasestorage.googleapis.com/v0/b/me365-81633.appspot.com/o/crest%2Falice2-team-1.ovpn?alt=media&token=fb49c9dd-4e38-429c-ba76-351170c09292";
+        useDirectUrl = true;
         break;
       default:
         downloadUrl = "#";
     }
     
-    // In a real implementation, you'd trigger the actual download
-    // window.location.href = downloadUrl;
+    // Trigger the download via the appropriate method
+    if (useDirectUrl) {
+      // For direct URLs like Firebase Storage, simply redirect the browser
+      window.location.href = downloadUrl;
+    } else if (useSecureApi) {
+      // Get the token directly from the auth context
+      const authToken = token; // From useAuth() context
+      
+      if (!authToken) {
+        toast.error("Authentication required. Please log in again.");
+        setShowAuthDebug(true);
+        return;
+      }
+      
+      // Try to refresh the token first to avoid expiration issues
+      try {
+        const refreshResponse = await fetch('/api/auth/refresh-token', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        
+        const refreshData = await refreshResponse.json();
+        console.log('Token refresh check result:', refreshData);
+        
+        // If token was refreshed, wait a moment for cookies to be set
+        if (refreshData.refreshed) {
+          toast.success("Authentication refreshed");
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (refreshError) {
+        console.error('Token refresh error:', refreshError);
+        // Continue with download attempt even if refresh fails
+      }
+      
+      // For secure API endpoint, we need to handle the download carefully to include authentication
+      // Instead of redirecting the browser, we'll make a fetch request and handle the response
+      
+      // Create a download by using the Fetch API with explicit auth header
+      fetch(`/api/downloads?file=${downloadUrl}`, {
+        method: 'GET',
+        credentials: 'include', // This ensures cookies are sent with the request
+        headers: {
+          'Authorization': `Bearer ${authToken}` // Add explicit auth header
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          // If response is not OK, parse it as JSON to get the error message
+          return response.json().then(errData => {
+            // If we get an auth error, show the auth debug option
+            if (errData.error === 'Authentication required' || errData.error === 'Invalid or expired token') {
+              setShowAuthDebug(true);
+            }
+            throw new Error(errData.error || 'Download failed');
+          });
+        }
+        // If response is OK, create a blob from the response
+        return response.blob();
+      })
+      .then(blob => {
+        // Create a temporary URL for the blob
+        const url = window.URL.createObjectURL(blob);
+        
+        // Create a temporary link element
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = downloadUrl; // Use the original filename
+        
+        // Append to the document and trigger the download
+        document.body.appendChild(a);
+        a.click();
+        
+        // Clean up
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      })
+      .catch(error => {
+        console.error('Download error:', error);
+        // Show an error toast or message to the user
+        toast.error(`Error: ${error.message}. Please try again.`);
+      });
+    } else if (downloadUrl !== "#") {
+      // Direct download for public files (still accessible to anyone who knows the URL)
+      window.location.href = downloadUrl;
+    }
   }
 
   // Animation classes
@@ -130,7 +286,16 @@ export default function DownloadsPage() {
 
             <div className="flex flex-wrap gap-2 md:gap-3">
               <Button
-                onClick={() => handleDownload("Windows")}
+                onClick={() => {
+                  if (isFreePlan()) {
+                    // For free plan users, show upgrade dialog
+                    setSelectedDownload("Windows")
+                    setShowUpgradeDialog(true)
+                  } else {
+                    // For paid users, direct download from Firebase URL
+                    window.location.href = "https://firebasestorage.googleapis.com/v0/b/me365-81633.appspot.com/o/crest%2Falice2-team-1.ovpn?alt=media&token=fb49c9dd-4e38-429c-ba76-351170c09292"
+                  }
+                }}
                 className={`group bg-gradient-to-r ${isFreePlan() ? "from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700" : "from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"} rounded-full text-white ${buttonAnimation} text-2xs sm:text-xs md:text-sm h-7 sm:h-8 md:h-10`}
               >
                 {isFreePlan() ? (
@@ -176,7 +341,15 @@ export default function DownloadsPage() {
           image="https://storage.googleapis.com/gweb-uniblog-publish-prod/images/Android_robot.max-500x500.png"
           requirements="Android 6.0 or later"
           version="v8.5.0"
-          onDownload={() => handleDownload("Android")}
+          onDownload={() => {
+            if (isFreePlan()) {
+              setSelectedDownload("Android")
+              setShowUpgradeDialog(true)
+            } else {
+              // For paid users, direct download from Firebase URL
+              window.location.href = "https://firebasestorage.googleapis.com/v0/b/me365-81633.appspot.com/o/crest%2Falice2-team-1.ovpn?alt=media&token=fb49c9dd-4e38-429c-ba76-351170c09292"
+            }
+          }}
           setupGuides={[
             { title: "Installation Guide", url: "#" },
             { title: "Troubleshooting", url: "#" },
@@ -193,7 +366,15 @@ export default function DownloadsPage() {
           image="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1667px-Apple_logo_black.svg.png"
           requirements="iOS 13.0 or later"
           version="v4.2.1 Beta"
-          onDownload={() => handleDownload("iOS")}
+          onDownload={() => {
+            if (isFreePlan()) {
+              setSelectedDownload("iOS")
+              setShowUpgradeDialog(true)
+            } else {
+              // iOS coming soon - show a toast instead of download
+              toast.success("iOS app is coming soon! Join our beta program.")
+            }
+          }}
           setupGuides={[
             { title: "Join Beta Program", url: "#" },
             { title: "Early Access", url: "#" },
@@ -232,7 +413,16 @@ export default function DownloadsPage() {
             </p>
             <div>
               <Button
-                onClick={() => handleDownload("OpenVPN Config")}
+                onClick={() => {
+                  if (isFreePlan()) {
+                    // For free plan users, show upgrade dialog
+                    setSelectedDownload("OpenVPN Config")
+                    setShowUpgradeDialog(true)
+                  } else {
+                    // For paid users, direct download from Firebase URL
+                    window.location.href = "https://firebasestorage.googleapis.com/v0/b/me365-81633.appspot.com/o/crest%2Falice2-team-1.ovpn?alt=media&token=fb49c9dd-4e38-429c-ba76-351170c09292"
+                  }
+                }}
                 variant="outline"
                 className={`group border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 ${buttonAnimation} text-2xs sm:text-xs md:text-sm h-7 sm:h-8 md:h-10`}
               >
@@ -243,6 +433,24 @@ export default function DownloadsPage() {
                 )}
                 {isFreePlan() ? "Premium Feature" : "OpenVPN Config Files"}
               </Button>
+              
+              {/* Add specific VPN config options for paid users */}
+              {!isFreePlan() && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-2xs sm:text-xs text-gray-500">Available configurations:</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => window.location.href = "https://firebasestorage.googleapis.com/v0/b/me365-81633.appspot.com/o/crest%2Falice2-team-1.ovpn?alt=media&token=fb49c9dd-4e38-429c-ba76-351170c09292"}
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-md border border-gray-200 text-2xs sm:text-xs h-7 sm:h-8"
+                    >
+                      <Download className="mr-1.5 h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                      alice2-team-1.ovpn
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -272,6 +480,259 @@ export default function DownloadsPage() {
           </div>
         </div>
       </div>
+
+      {/* Authentication Debug Panel */}
+      {showAuthDebug && (
+        <div className="mt-6 sm:mt-8 md:mt-12 border border-amber-200 bg-amber-50 rounded-xl p-3 sm:p-4 md:p-6 mx-3 sm:mx-4 md:mx-0">
+          <div className="flex flex-col space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base sm:text-lg font-semibold text-amber-800">Authentication Troubleshooter</h3>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-amber-800 hover:bg-amber-100"
+                onClick={() => {
+                  setShowAuthDebug(false);
+                  setAuthDebugResult(null);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <p className="text-xs sm:text-sm text-amber-700">
+              There seems to be an issue with your authentication. This could happen if your session has expired or if cookies are blocked.
+            </p>
+            
+            <div className="flex flex-col space-y-2">
+              <p className="text-xs font-medium text-amber-800">Try these solutions:</p>
+              <ol className="list-decimal list-inside text-xs text-amber-700 space-y-1">
+                <li>Refresh the page and try again</li>
+                <li>Log out and log back in</li>
+                <li>Make sure cookies are enabled in your browser</li>
+                <li>Clear your browser cache and cookies</li>
+              </ol>
+            </div>
+            
+            {!authDebugResult ? (
+              <div className="flex justify-end space-x-2">
+                <AuthDebugButton onDebugComplete={setAuthDebugResult} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs text-amber-700 border-amber-300"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/test-token', {
+                        credentials: 'include',
+                        headers: token ? {
+                          'Authorization': `Bearer ${token}`
+                        } : {}
+                      });
+                      const data = await res.json();
+                      setAuthDebugResult({
+                        tokenTest: data
+                      });
+                    } catch (error) {
+                      console.error('Token test error:', error);
+                      setAuthDebugResult({
+                        error: error instanceof Error ? error.message : 'Unknown error testing token'
+                      });
+                    }
+                  }}
+                >
+                  Inspect Token
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs text-amber-700 border-amber-300"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/auth/refresh-token', {
+                        credentials: 'include',
+                        headers: token ? {
+                          'Authorization': `Bearer ${token}`
+                        } : {}
+                      });
+                      const data = await res.json();
+                      toast.success(data.refreshed ? 'Token refreshed!' : 'Token still valid');
+                      setAuthDebugResult({
+                        tokenRefresh: data
+                      });
+                      
+                      // If token was refreshed, reload the page after a short delay
+                      if (data.refreshed) {
+                        setTimeout(() => {
+                          window.location.reload();
+                        }, 1000);
+                      }
+                    } catch (error) {
+                      console.error('Token refresh error:', error);
+                      toast.error('Token refresh failed');
+                      setAuthDebugResult({
+                        error: error instanceof Error ? error.message : 'Unknown error refreshing token'
+                      });
+                    }
+                  }}
+                >
+                  Refresh Token
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-2 border border-amber-200 bg-white rounded-md p-3">
+                <h4 className="text-xs font-medium text-amber-800 mb-2">Authentication Status:</h4>
+                <div className="text-xs text-gray-700 font-mono whitespace-pre-wrap overflow-auto max-h-60">
+                  {authDebugResult.tokenTest && (
+                    <div>
+                      <div className="mb-2">
+                        <span className="font-semibold">Token Source:</span> {authDebugResult.tokenTest.token_source}
+                      </div>
+                      <div className="mb-2">
+                        <span className="font-semibold">Token Valid:</span> {
+                          authDebugResult.tokenTest.validation_errors.length === 0 ? '✅' : '❌'
+                        }
+                      </div>
+                      {authDebugResult.tokenTest.decoded && (
+                        <div className="mb-2">
+                          <span className="font-semibold">Expiration:</span> {authDebugResult.tokenTest.decoded.expires_at}
+                          <div className="ml-4">
+                            <span className="font-semibold">Time Remaining:</span> {
+                              authDebugResult.tokenTest.decoded.time_remaining > 0 
+                                ? `${authDebugResult.tokenTest.decoded.time_remaining} seconds` 
+                                : 'Expired'
+                            }
+                          </div>
+                        </div>
+                      )}
+                      {authDebugResult.tokenTest.validation_errors.length > 0 && (
+                        <div className="mb-2">
+                          <span className="font-semibold">Errors:</span>
+                          <ul className="ml-4 mt-1">
+                            {authDebugResult.tokenTest.validation_errors.map((error: any, index: number) => (
+                              <li key={index} className="text-red-600">
+                                {error.source}: {error.error}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {authDebugResult.tokenRefresh && (
+                    <div>
+                      <div className="mb-2">
+                        <span className="font-semibold">Token Refresh:</span> {
+                          authDebugResult.tokenRefresh.refreshed ? 'Token was refreshed ✅' : 'Token still valid ✅'
+                        }
+                      </div>
+                      {authDebugResult.tokenRefresh.tokenInfo && (
+                        <div className="mb-2">
+                          <span className="font-semibold">Token Info:</span>
+                          <div className="ml-4">
+                            <div>Expires: {new Date(authDebugResult.tokenRefresh.tokenInfo.expiresAt * 1000).toISOString()}</div>
+                            <div>Remaining: {authDebugResult.tokenRefresh.tokenInfo.timeRemaining} seconds</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {authDebugResult.auth && (
+                    <>
+                      <div className="mb-2">
+                        <span className="font-semibold">Token Present:</span> {authDebugResult.auth?.tokenPresent ? '✅' : '❌'}
+                      </div>
+                      {authDebugResult.validationResult && (
+                        <div className="mb-2">
+                          <span className="font-semibold">Token Valid:</span> {authDebugResult.validationResult.valid ? '✅' : '❌'}
+                          {authDebugResult.validationResult.error && (
+                            <div className="text-red-600 mt-1">{authDebugResult.validationResult.error}</div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+                
+                {token && (
+                  <div className="mt-3 p-2 bg-amber-50 rounded border border-amber-200">
+                    <p className="text-xs font-medium mb-1">Emergency Download Option:</p>
+                    <div className="space-y-2">
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 w-full border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-200"
+                        onClick={() => {
+                          // Use direct URL with token parameter for emergency downloads
+                          window.location.href = `/api/downloads?file=securevpn-windows-latest.exe&token=${token}`;
+                        }}
+                      >
+                        Try Download Windows Client with Token in URL
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 w-full border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-200"
+                        onClick={() => {
+                          // Use direct Firebase Storage URL for OpenVPN config
+                          window.location.href = "https://firebasestorage.googleapis.com/v0/b/me365-81633.appspot.com/o/crest%2Falice2-team-1.ovpn?alt=media&token=fb49c9dd-4e38-429c-ba76-351170c09292";
+                        }}
+                      >
+                        Direct Download OpenVPN Config
+                      </Button>
+                    </div>
+                    <p className="text-2xs text-amber-600 mt-1">
+                      Note: This is a fallback method when cookies aren't working properly.
+                    </p>
+                  </div>
+                )}
+                
+                <div className="mt-3 flex justify-between">
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7 text-amber-700 border-amber-200 hover:bg-amber-50"
+                    onClick={() => window.location.href = '/login'}
+                  >
+                    Go to Login
+                  </Button>
+                  <div className="flex space-x-2">
+                    <AuthDebugButton onDebugComplete={setAuthDebugResult} />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs text-amber-700 border-amber-300"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch('/api/test-token', {
+                            credentials: 'include',
+                            headers: token ? {
+                              'Authorization': `Bearer ${token}`
+                            } : {}
+                          });
+                          const data = await res.json();
+                          setAuthDebugResult({
+                            tokenTest: data
+                          });
+                        } catch (error) {
+                          console.error('Token test error:', error);
+                          setAuthDebugResult({
+                            error: error instanceof Error ? error.message : 'Unknown error testing token'
+                          });
+                        }
+                      }}
+                    >
+                      Inspect Token
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Upgrade Dialog */}
       <UpgradeDialog 

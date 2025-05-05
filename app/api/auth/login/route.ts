@@ -12,13 +12,27 @@ interface JWTPayload {
 
 // Server-side function to set auth cookie
 function setAuthCookie(token: string): void {
+  // Primary HTTP-only cookie for security
   cookies().set({
     name: "auth-token",
     value: token,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: false, // Disable secure flag to work on both HTTP and HTTPS
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: "/",
+    sameSite: "lax"
+  })
+  
+  // Secondary non-HTTP-only cookie as backup for client-side access
+  // This can help diagnose issues with cookie handling
+  cookies().set({
+    name: "ls-auth-token",
+    value: token,
+    httpOnly: false,
+    secure: false,
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+    path: "/",
+    sameSite: "lax"
   })
 }
 
@@ -101,6 +115,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Remove localStorage usage since this is server-side code
+    // The token will be sent to the client via the auth cookie set below
+
     // Try to decode the token to extract user information
     let userData: User = { id: "1", email: email };
     
@@ -148,6 +165,7 @@ export async function POST(request: NextRequest) {
 
     // Set auth cookie
     setAuthCookie(token)
+    console.log("Auth cookie set:", token.substring(0, 10) + "...")
 
     // Return success response with token and user data
     return NextResponse.json(

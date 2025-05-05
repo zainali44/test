@@ -16,32 +16,14 @@ export default function DashboardPage() {
   }, [user])
   
   useEffect(() => {
-    // Don't redirect immediately, wait for auth to be processed
+    // Set ready state once auth is loaded
     if (!loading) {
-      // Small delay to ensure routing is ready and user data is available
-      const timer = setTimeout(() => {
-        setIsReady(true)
-        router.push("/dashboard/downloads")
-      }, 500)
-      
-      return () => clearTimeout(timer)
+      setIsReady(true)
     }
-  }, [router, loading])
+  }, [loading])
 
   return (
     <div className="container mx-auto p-6">
-      {/* <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
-      <p className="mb-4">Redirecting to downloads page...</p> */}
-      
-      {/* User info for debugging
-      {user && (
-        <div className="mb-4 p-3 bg-gray-100 rounded-md">
-          <p>User: {user.name || user.email || "Unknown"}</p>
-          <p>Email: {user.email || "No email available"}</p>
-          <p>ID: {user.id || "No ID available"}</p>
-        </div>
-      )} */}
-      
       {/* Loading skeleton */}
       <div className="space-y-4">
         <Skeleton className="h-12 w-full" />

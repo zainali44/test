@@ -10,24 +10,104 @@ import { Eye, EyeOff, Mail, Lock, PowerCircle, PowerCircleIcon } from "lucide-re
 import Link from "next/link"
 import { useAuth } from "@/app/contexts/auth-context"
 import { useRouter, useSearchParams } from "next/navigation"
+import { getAuthToken } from "@/app/utils/auth"
+
+// Interface for token validation response
+interface TokenValidationResponse {
+  valid: boolean;
+  message?: string;
+  user?: {
+    id: string;
+    email: string;
+    name?: string;
+  };
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { login, loading, user } = useAuth()
+  const { login, logout, loading, user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams?.get('redirect')
 
-  useEffect(() => {
-    setMounted(true)
-    // If user is already logged in, handle redirection
-    if (user) {
-      handlePostLoginRedirect()
+  // Function to validate token with the external API
+  const validateToken = async (token: string): Promise<boolean> => {
+    try {
+      // Add timeout to prevent long-hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
+      const response = await fetch('http://localhost:8000/users/validate-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json'
+        },
+        body: JSON.stringify({ token }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        console.error('Token validation failed with status:', response.status);
+        return false;
+      }
+      
+      const data = await response.json() as TokenValidationResponse;
+      return data.valid || false;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error('Token validation request timed out');
+      } else {
+        console.error('Token validation error:', error);
+      }
+      return false;
     }
-  }, [user, router])
+  }
+
+  // Check token validity on component mount
+  useEffect(() => {
+    const checkTokenValidity = async () => {
+      setMounted(true)
+      
+      // Only perform validation if we're not already logging in
+      if (!loading) {
+        const token = getAuthToken()
+        
+        if (token) {
+          // Validate token with external API
+          const isValid = await validateToken(token)
+          
+          if (!isValid) {
+            // Token is invalid or expired, log the user out
+            console.log('Token invalid or expired, logging out')
+            await logout()
+            return
+          }
+        }
+        
+        // If user is already logged in and token is valid, handle redirection
+        if (user) {
+          handlePostLoginRedirect()
+        }
+      }
+    }
+    
+    // Initial check
+    checkTokenValidity()
+    
+    // Set up periodic token validation (every 5 minutes)
+    const intervalId = setInterval(checkTokenValidity, 5 * 60 * 1000)
+    
+    // Clean up interval on component unmount
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [user, router, loading, logout])
   
   // Function to handle redirects after login
   const handlePostLoginRedirect = () => {
@@ -270,24 +350,29 @@ export default function LoginPage() {
             </div>
           </motion.div>
 
-          <motion.div variants={itemVariants}>
+          <motion.div variants={itemVariants} className="mb-4 sm:mb-6">
             <div className="relative">
-              <Lock className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
+              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <Input
                 type={showPassword ? "text" : "password"}
-                placeholder="Enter password"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="pl-10 sm:pl-12 py-5 sm:py-6 h-12 sm:h-14 text-sm sm:text-base rounded-xl border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 pr-10 sm:pr-12"
+                className="pl-12 py-6 h-14 text-base rounded-xl border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                {showPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
+            </div>
+            <div className="flex justify-end mt-2">
+              <Link href="/forgot-password" className="text-sm text-purple-600 hover:text-purple-800">
+                Forgot password?
+              </Link>
             </div>
           </motion.div>
 

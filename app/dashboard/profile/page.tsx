@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
-import { Check, Edit2, ExternalLink, Lock, Mail, Shield, Upload, X, User as UserIcon, UserCircle, Zap, Settings, CreditCard, Calendar, Copy, AlertCircle } from "lucide-react"
+import { Check, Edit2, ExternalLink, Lock, Mail, Shield, Upload, X, UserIcon, UserCircle, Zap, Settings, CreditCard, Calendar, Copy, AlertCircle, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { toast } from "react-hot-toast"
+import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -11,13 +13,14 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/app/contexts/auth-context"
 import { useSubscription } from "@/app/contexts/subscription-context"
-import Link from "next/link"
 import { User } from "@/app/utils/auth"
+import { updateUserProfile, updateUserPassword, uploadProfileImage, requestEmailVerification, validateToken, isUserVerified, debugVerificationStatus } from "@/app/utils/profileApi"
 
 // Extend the User interface for our additional properties
 interface ExtendedUser extends User {
   profilePicture?: string;
   created_at?: string | Date;
+  isVerifiedEmail?: boolean;
 }
 
 interface Transaction {
@@ -30,14 +33,398 @@ interface Transaction {
   payment_name?: string;
 }
 
+// Auth context interface to match the actual context structure
+interface AuthContextValue {
+  user: ExtendedUser | null;
+  token: string | null;
+  loading?: boolean;
+  error?: any;
+  login?: (email: string, password: string) => Promise<any>;
+  logout?: () => void;
+  register?: (userData: any) => Promise<any>;
+  updateUserData?: (data: Partial<ExtendedUser>) => void;
+}
+
+// SonarMessage component for displaying API response status
+interface SonarMessageProps {
+  message: string;
+  type: 'success' | 'error' | 'loading' | 'info';
+  onDismiss?: () => void;
+}
+
+// Add this interface before the profile component
+interface VerificationStatus {
+  valid?: boolean;
+  data?: {
+    valid?: boolean;
+    user?: any;
+  };
+  user?: any;
+  message?: string;
+  error?: string;
+}
+
+// Add this interface to set up function properties
+interface CheckVerificationStatusFunction extends Function {
+  lastChecked?: number;
+  cachedData?: VerificationStatus | null;
+}
+
+const SonarMessage: React.FC<SonarMessageProps> = ({ message, type, onDismiss }) => {
+  const [visible, setVisible] = useState(true);
+  
+  // Auto-dismiss after 5 seconds for success messages
+  useEffect(() => {
+    if (type === 'success' && visible) {
+      const timer = setTimeout(() => {
+        setVisible(false);
+        if (onDismiss) onDismiss();
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [type, visible, onDismiss]);
+  
+  if (!visible) return null;
+  
+  const bgColor = 
+    type === 'success' ? 'bg-emerald-100 border-emerald-200' :
+    type === 'error' ? 'bg-red-100 border-red-200' :
+    type === 'loading' ? 'bg-blue-100 border-blue-200' :
+    'bg-amber-100 border-amber-200';
+  
+  const textColor = 
+    type === 'success' ? 'text-emerald-800' :
+    type === 'error' ? 'text-red-800' :
+    type === 'loading' ? 'text-blue-800' :
+    'text-amber-800';
+  
+  const icon = 
+    type === 'success' ? <Check className="h-4 w-4 mr-2" /> :
+    type === 'error' ? <X className="h-4 w-4 mr-2" /> :
+    type === 'loading' ? <div className="h-4 w-4 mr-2 rounded-full border-2 border-t-blue-500 animate-spin" /> :
+    <AlertCircle className="h-4 w-4 mr-2" />;
+  
+  return (
+    <div className={`fixed bottom-4 right-4 z-50 max-w-md rounded-lg border p-4 shadow-md ${bgColor}`}>
+      <div className="flex items-center justify-between">
+        <div className={`flex items-center ${textColor}`}>
+          {icon}
+          <span className="text-sm font-medium">{message}</span>
+        </div>
+        <button
+          onClick={() => {
+            setVisible(false);
+            if (onDismiss) onDismiss();
+          }}
+          className={`ml-4 rounded-md p-1 hover:bg-opacity-20 hover:bg-gray-500 ${textColor}`}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Add this component after the SonarMessage component
+const TokenDebugButton = ({ token }: { token: string | null }) => {
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugData, setDebugData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  
+  const checkToken = async () => {
+    if (loading) return;
+    
+    try {
+      setLoading(true);
+      
+      // Get the token info from multiple sources
+      const authStatusResponse = await fetch('/api/auth-status', {
+        method: 'GET',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      
+      const authStatus = await authStatusResponse.json();
+      
+      // Also check with test-token endpoint
+      const testTokenResponse = await fetch('/api/test-token', {
+        method: 'GET',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      
+      const testTokenData = await testTokenResponse.json();
+      
+      // Call the new debug endpoint
+      const debugValidateResponse = await fetch('/api/auth/validate-token-debug', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      
+      const debugValidateData = await debugValidateResponse.json();
+      
+      // Display all results
+      setDebugData({
+        auth_status: authStatus,
+        test_token: testTokenData,
+        validate_token: debugValidateData
+      });
+      
+      setShowDebug(true);
+    } catch (error) {
+      console.error("Token debug error:", error);
+      
+      setDebugData({
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+      
+      setShowDebug(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <>
+      <Button 
+        variant="outline"
+        size="sm"
+        className="text-2xs sm:text-xs h-7 sm:h-8 rounded-md border-gray-200 hover:bg-gray-50"
+        onClick={checkToken}
+        disabled={loading}
+      >
+        {loading ? 'Checking...' : 'Debug Token'}
+      </Button>
+      
+      {showDebug && debugData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[80vh] overflow-auto">
+            <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
+              <h3 className="font-bold">Token Debug Information</h3>
+              <button onClick={() => setShowDebug(false)} className="p-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto">
+              <pre className="text-xs whitespace-pre-wrap bg-gray-50 p-3 rounded max-h-[60vh] overflow-auto">
+                {JSON.stringify(debugData, null, 2)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
 export default function ProfilePage() {
-  const { user } = useAuth() as { user: ExtendedUser | null };
+  const { user, token, updateUserData: contextUpdateUserData } = useAuth() as AuthContextValue;
   const { subscription, fetchSubscription, loading: subLoading } = useSubscription()
   const router = useRouter()
   const [isEditing, setIsEditing] = useState<string | null>(null)
-  const [emailVerified, setEmailVerified] = useState(false) // Set to false by default
+  const [emailVerified, setEmailVerified] = useState(user?.isVerifiedEmail || false)
   const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""])
   const [showConfetti, setShowConfetti] = useState(false)
+  const [lastPasswordChange, setLastPasswordChange] = useState<string | null>(null)
+  
+  // New state variables for form management
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
+  const [resendingVerification, setResendingVerification] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [apiStatus, setApiStatus] = useState<{message: string; type: 'success' | 'error' | 'loading' | 'info'} | null>(null);
+  
+  // Refresh user data from the validate-token endpoint
+  const refreshUserData = async (showLoadingState = false) => {
+    if (!token) return;
+    
+    try {
+      if (showLoadingState) {
+        setApiStatus({message: "Refreshing user data...", type: "loading"});
+      }
+      
+      // Reset the cache to force a fresh validation
+      checkVerificationStatus.lastChecked = 0;
+      checkVerificationStatus.cachedData = null;
+      
+      try {
+        // Always perform a fresh validation when refreshing
+        const validationResult = await checkVerificationStatus();
+        
+        if (validationResult && validationResult.valid) {
+          // Force form data update
+          if (validationResult.user) {
+            setFormData(prev => ({
+              ...prev,
+              name: validationResult.user.name || prev.name,
+              email: validationResult.user.email || prev.email
+            }));
+          }
+          
+          if (showLoadingState) {
+            setApiStatus({message: "User data refreshed successfully", type: "success"});
+            setTimeout(() => setApiStatus(null), 2000);
+          }
+        } else {
+          if (showLoadingState) {
+            setApiStatus({message: "Could not validate user data", type: "error"});
+            setTimeout(() => setApiStatus(null), 2000);
+          }
+        }
+      } catch (validationError) {
+        console.error("Validation error in refreshUserData:", validationError);
+        
+        // If validation fails, try using direct API call without caching
+        try {
+          const directValidateData = await validateToken(token);
+          
+          if (directValidateData && directValidateData.valid && directValidateData.user) {
+            // Update the UI directly with the validation data
+            setFormData(prev => ({
+              ...prev,
+              name: directValidateData.user?.name || prev.name,
+              email: directValidateData.user?.email || prev.email
+            }));
+            
+            // Update verification status
+            setEmailVerified(!!directValidateData.user?.isVerified);
+            
+            // Update profile picture if available
+            const profileImage = directValidateData.user?.imageBase64 || directValidateData.user?.profilePicture;
+            
+            if (contextUpdateUserData && user && profileImage) {
+              contextUpdateUserData({
+                ...user,
+                profilePicture: profileImage
+              });
+            }
+            
+            if (showLoadingState) {
+              setApiStatus({message: "User data refreshed successfully", type: "success"});
+              setTimeout(() => setApiStatus(null), 2000);
+            }
+          }
+        } catch (directError) {
+          console.error("Error in direct validation:", directError);
+          if (showLoadingState) {
+            setApiStatus({message: "Failed to refresh user data", type: "error"});
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+      if (showLoadingState) {
+        setApiStatus({message: "Failed to refresh user data", type: "error"});
+      }
+    }
+  };
+  
+  // Add a refresh button handler
+  const handleRefreshClick = () => {
+    refreshUserData(true);
+  };
+  
+  // Check verification status and refresh user data when component mounts
+  useEffect(() => {
+    if (token) {
+      // Get initial verification status
+      checkVerificationStatus();
+    }
+  }, [token]);
+  
+  // Remove automatic periodic refresh to prevent unnecessary API calls
+  // This helps avoid the unwanted password reset API calls
+  
+  // Function to normalize image URLs for Next.js Image component
+  const normalizeImageUrl = (imageUrl: string): string => {
+    if (!imageUrl) return '';
+    
+    // If it's a base64 image, return as is - this is the priority format
+    if (imageUrl.startsWith('data:')) {
+      return imageUrl;
+    }
+    
+    // Handle protocol-relative URLs
+    if (imageUrl.startsWith('//')) {
+      return `https:${imageUrl}`;
+    }
+    
+    // Make sure local paths start with / for Next.js
+    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+      return `/${imageUrl}`;
+    }
+    
+    return imageUrl;
+  };
+
+  // Update user data in the component state with proper image URL handling
+  const updateUserData = (data: Partial<ExtendedUser>) => {
+    // Use the auth context's updateUserData if available
+    if (contextUpdateUserData) {
+      contextUpdateUserData(data);
+    }
+    
+    // For profile pictures, also update DOM elements for immediate visibility
+    if (data.profilePicture && typeof window !== 'undefined') {
+      // Format the image URL properly
+      let formattedImageUrl = normalizeImageUrl(data.profilePicture);
+      
+      // Update all profile circles in the UI
+      const userCircles = document.querySelectorAll('.user-profile-circle');
+      userCircles.forEach((element: Element) => {
+        const imgElement = element.querySelector('img');
+        if (imgElement) {
+          imgElement.setAttribute('src', formattedImageUrl);
+        }
+      });
+      
+      console.log("Updated profile picture:", 
+        formattedImageUrl.startsWith('data:') 
+          ? 'base64 image data [truncated]' 
+          : formattedImageUrl);
+    }
+  };
+  
+  // Update formData when user data changes
+  useEffect(() => {
+    if (user) {
+      console.log("User data updated, refreshing form data:", user);
+      setFormData(prev => ({
+        ...prev,
+        name: user.name || '',
+        email: user.email || ''
+      }));
+      setEmailVerified(user.isVerifiedEmail || false);
+      
+      // Force refresh of user-dependent UI elements
+      const nameElement = document.querySelector('h1.font-bold');
+      const emailElement = document.querySelector('p.text-gray-500');
+      
+      if (nameElement) {
+        nameElement.textContent = user.name || (user.email ? user.email.split('@')[0] : 'User');
+      }
+      
+      if (emailElement) {
+        emailElement.textContent = user.email || 'No email available';
+      }
+    }
+  }, [user]);
+
+  // Get token from auth context
+  useEffect(() => {
+    console.log("Token", token)
+    console.log("Auth token from context:", token ? "Available" : "Not available")
+  }, [token])
   
   // Fetch subscription data when component mounts
   useEffect(() => {
@@ -48,23 +435,38 @@ export default function ProfilePage() {
       if (user?.id && isActive && !didAttempt) {
         didAttempt = true;
         try {
-          // First try the active-plan endpoint as it seems more reliable
-          const result = await fetch(`/api/subscriptions/active-plan/${user.id}?_t=${Date.now()}`, {
+          // setApiStatus({message: "Loading subscription data...", type: "loading"});
+          // Use our dedicated API route for active plan data
+          const activePlanUrl = `/api/subscriptions/active-plan/${user.id}`;
+          const result = await fetch(activePlanUrl, {
             method: 'GET',
             headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache'
+              'Authorization': `Bearer ${token}`
             }
           });
           
-          if (!result.ok && result.status !== 404) {
+          if (result.ok) {
+            const data = await result.json();
+            console.log("Active plan data:", data);
+            if (data.success) {
+              // toast.success("Subscription data loaded successfully");
+              // setApiStatus({message: "Subscription data loaded successfully", type: "success"});
+            }
+          } else if (result.status !== 404) {
+            const errorData = await result.json();
             console.error(`Error fetching active plan: ${result.status}`);
+            const errorMessage = errorData.message || "Failed to load subscription data";
+            toast.error(`Error: ${errorMessage}`);
+            setApiStatus({message: `Error: ${errorMessage}`, type: "error"});
           }
           
           // Still try the regular fetchSubscription in case it works
           await fetchSubscription(user.id.toString(), false);
         } catch (err) {
           console.error("Error fetching subscription:", err);
+          const errorMessage = err instanceof Error ? err.message : "Failed to load subscription data";
+          toast.error(`Error: ${errorMessage}`);
+          setApiStatus({message: `Error: ${errorMessage}`, type: "error"});
         }
       }
     };
@@ -74,7 +476,15 @@ export default function ProfilePage() {
     return () => {
       isActive = false;
     };
-  }, [user?.id]); // Only depend on user ID, not fetchSubscription
+  }, [user?.id, token]); // Add token as dependency
+  
+  // Helper function to get the authorization header
+  const getAuthHeader = () => {
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+  };
 
   // Get plan details based on subscription data or UI elements
   const getPlanDetails = () => {
@@ -217,6 +627,12 @@ export default function ProfilePage() {
     if (!dateString) return 'N/A'
     
     const date = new Date(dateString)
+    
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return 'N/A';
+    }
+    
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
   
@@ -279,16 +695,329 @@ export default function ProfilePage() {
     }
   }
 
-  const handleVerifyEmail = () => {
-    // Simulate verification
-    setEmailVerified(true)
-    setShowConfetti(true)
-    
-    // Hide confetti after animation
-    setTimeout(() => {
-      setShowConfetti(false)
-    }, 3000)
+  // Handle input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
   }
+  
+  // Update profile (name and email)
+  const updateProfile = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      setApiStatus({message: "Updating profile...", type: "loading"});
+      
+      const apiResponse = await updateUserProfile(formData.name, formData.email, token);
+      
+      // Refresh user data from server to ensure we have latest data
+      await refreshUserData(false);
+      
+      // Update local user state with the new data
+      const updatedUser = {
+        ...user,
+        name: formData.name,
+        email: formData.email
+      };
+      
+      // Update the user data in the auth context
+      if (contextUpdateUserData) {
+        contextUpdateUserData(updatedUser);
+      }
+      
+      // Force DOM update by directly updating UI elements
+      const nameElement = document.querySelector('h1.font-bold');
+      const emailElement = document.querySelector('p.text-gray-500');
+      
+      if (nameElement) {
+        nameElement.textContent = formData.name || user.name || '';
+      }
+      
+      if (emailElement) {
+        emailElement.textContent = formData.email || user.email || '';
+      }
+      
+      setSuccess(apiResponse.message);
+      toast.success(apiResponse.message || "Profile updated successfully");
+      setApiStatus({message: apiResponse.message || "Profile updated successfully", type: "success"});
+      setIsEditing(null);
+      
+      // If email was changed, user will need to verify it again
+      if (apiResponse.message && apiResponse.message.includes('verify your new email')) {
+        setEmailVerified(false);
+      }
+    } catch (error: any) {
+      setError(error.message);
+      toast.error(`Error: ${error.message || "Failed to update profile"}`);
+      setApiStatus({message: `Error: ${error.message || "Failed to update profile"}`, type: "error"});
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Change password
+  const changePassword = async () => {
+    try {
+      if (formData.newPassword !== formData.confirmPassword) {
+        const errorMsg = 'New passwords do not match';
+        setError(errorMsg);
+        toast.error(`Error: ${errorMsg}`);
+        setApiStatus({message: `Error: ${errorMsg}`, type: "error"});
+        return;
+      }
+      
+      setLoading(true);
+      setError(null);
+      setApiStatus({message: "Changing password...", type: "loading"});
+      
+      const apiResponse = await updateUserPassword(formData.currentPassword, formData.newPassword, token);
+      
+      setSuccess(apiResponse.message);
+      toast.success(apiResponse.message || "Password changed successfully");
+      setApiStatus({message: apiResponse.message || "Password changed successfully", type: "success"});
+      
+      // After successful password change, fetch the latest user data to update the last password change date
+      if (token) {
+        try {
+          const validateData = await validateToken(token);
+          
+          if (validateData.valid && validateData.user && validateData.user.passwordChangedAt) {
+            // Update the last password change date
+            setLastPasswordChange(validateData.user.passwordChangedAt);
+            
+            // Update user data in the context
+            if (contextUpdateUserData) {
+              contextUpdateUserData({
+                ...user,
+                passwordChangedAt: validateData.user.passwordChangedAt
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching updated user data:", error);
+        }
+      }
+      
+      setIsEditing(null);
+      
+      // Reset password fields
+      setFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }));
+    } catch (error: any) {
+      setError(error.message);
+      toast.error(`Error: ${error.message || "Failed to change password"}`);
+      setApiStatus({message: `Error: ${error.message || "Failed to change password"}`, type: "error"});
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Request password reset
+  const requestPasswordReset = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setApiStatus({message: "Requesting password reset...", type: "loading"});
+      
+      const response = await fetch(`${process.env.NEXT_API}/users/reset-password-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: user?.email
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        const errorMsg = data.error || data.message || 'Failed to request password reset';
+        setError(errorMsg);
+        toast.error(`Error: ${errorMsg}`);
+        setApiStatus({message: `Error: ${errorMsg}`, type: "error"});
+        throw new Error(errorMsg);
+      }
+      
+      setSuccess(data.message);
+      toast.success(data.message || "Password reset link sent successfully");
+      setApiStatus({message: data.message || "Password reset link sent successfully", type: "success"});
+      setShowPasswordReset(false);
+    } catch (error: any) {
+      setError(error.message);
+      toast.error(`Error: ${error.message || "Failed to request password reset"}`);
+      setApiStatus({message: `Error: ${error.message || "Failed to request password reset"}`, type: "error"});
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Update the function signature
+  const checkVerificationStatus = (async () => {
+    if (!token) return null;
+    
+    // Add a timestamp-based cache to avoid frequent calls
+    const now = Date.now();
+    const lastCheck = (checkVerificationStatus as CheckVerificationStatusFunction).lastChecked || 0;
+    
+    // Only check once every 5 minutes unless force refreshed
+    if (now - lastCheck < 5 * 60 * 1000 && (checkVerificationStatus as CheckVerificationStatusFunction).cachedData) {
+      console.log("Using cached verification status");
+      return (checkVerificationStatus as CheckVerificationStatusFunction).cachedData || null;
+    }
+    
+    try {
+      console.log("Checking user verification status...");
+      
+      // Token null check before calling validateToken
+      if (!token) {
+        throw new Error("No authentication token available");
+      }
+      
+      const validateData = await validateToken(token);
+      console.log("Full token validation response:", JSON.stringify(validateData));
+      
+      // Get validation result directly from the normalized response
+      const isValid = validateData.valid;
+      
+      // Extract user data directly from the normalized response
+      const userData = validateData.user;
+      
+      // If validation is successful and we have user data
+      if (isValid && userData) {
+        console.log("Token is valid");
+        console.log("User data available:", userData);
+        console.log("User data fields:", Object.keys(userData));
+        
+        // Check verification status using our helper function
+        const { isVerified, details } = debugVerificationStatus(userData, validateData);
+        console.log("Email verification check:", { isVerified, details });
+        
+        // Update email verification status
+        setEmailVerified(isVerified);
+        
+        // Update last password change date if available
+        if (userData.passwordChangedAt) {
+          setLastPasswordChange(userData.passwordChangedAt);
+        }
+        
+        // Prefer base64 image data if available
+        const profileUrl = userData.imageBase64 || 
+                         userData.profilePicture;
+        
+        // Update form data with user information
+        setFormData(prev => ({
+          ...prev,
+          name: userData.name || prev.name,
+          email: userData.email || prev.email
+        }));
+        
+        // Update user data in context
+        if (contextUpdateUserData) {
+          const updatedUserData: Partial<ExtendedUser> = {
+            ...user,
+            name: userData.name,
+            email: userData.email,
+            isVerifiedEmail: isVerified,
+            passwordChangedAt: userData.passwordChangedAt
+          };
+          
+          if (profileUrl) {
+            updatedUserData.profilePicture = profileUrl;
+            
+            // Also update DOM elements for immediate visibility
+            updateUserData({
+              profilePicture: profileUrl
+            });
+          }
+          
+          // Update auth context with new user data
+          contextUpdateUserData(updatedUserData);
+          
+          // Force DOM update by directly updating UI elements
+          const nameElement = document.querySelector('h1.font-bold');
+          const emailElement = document.querySelector('p.text-gray-500');
+          
+          if (nameElement && userData.name) {
+            nameElement.textContent = userData.name;
+          }
+          
+          if (emailElement && userData.email) {
+            emailElement.textContent = userData.email;
+          }
+        }
+        
+        return validateData;
+      } else {
+        console.error("Token validation failed or invalid structure:", validateData);
+        setApiStatus({
+          message: "Authentication error: " + 
+                  (validateData.message || "Invalid token structure"),
+          type: "error"
+        });
+      }
+    } catch (error) {
+      console.error("Error checking verification status:", error);
+      // Don't update the last checked timestamp on error
+      // So we'll try again next time
+      (checkVerificationStatus as CheckVerificationStatusFunction).lastChecked = 0;
+      (checkVerificationStatus as CheckVerificationStatusFunction).cachedData = null;
+      
+      // Show error to user
+      setApiStatus({
+        message: "Failed to verify authentication status: " + 
+                (error instanceof Error ? error.message : "Unknown error"),
+        type: "error"
+      });
+    }
+    
+    return null;
+  }) as CheckVerificationStatusFunction;
+  
+  // Add static properties to the function for caching
+  checkVerificationStatus.lastChecked = 0;
+  checkVerificationStatus.cachedData = null;
+  
+  // Handle email verification
+  const handleVerifyEmail = async () => {
+    try {
+      setResendingVerification(true);
+      setApiStatus({message: "Sending verification email...", type: "loading"});
+      
+      const apiResponse = await requestEmailVerification(token);
+      
+      // Check current verification status
+      await checkVerificationStatus();
+      
+      // Handle successful verification
+      toast.success(apiResponse.message || "Verification email sent successfully");
+      setApiStatus({message: apiResponse.message || "Verification email sent successfully", type: "success"});
+      
+      if (emailVerified) {
+        setShowConfetti(true);
+        
+        // Hide confetti after animation
+        setTimeout(() => {
+          setShowConfetti(false);
+        }, 3000);
+      }
+    } catch (error: any) {
+      setError(error.message);
+      toast.error(`Error: ${error.message || "Failed to verify email"}`);
+      setApiStatus({message: `Error: ${error.message || "Failed to verify email"}`, type: "error"});
+    } finally {
+      setResendingVerification(false);
+    }
+  };
   
   // Get username from user or subscription
   const getUsername = () => {
@@ -306,25 +1035,171 @@ export default function ProfilePage() {
     }
     
     return username || "user@example.com";
-  }
+  };
   
-  const userEmail = user?.email || 'user@example.com'
-  const username = getUsername()
-  const displayName = user?.name || username
-  const planName = planDetails.name
+  const userEmail = user?.email || 'user@example.com';
+  const username = getUsername();
+  const displayName = user?.name || username;
+  const planName = planDetails.name;
   const isPaid = planDetails.type !== 'Free' || 
-    (subscription && 'plan_id' in subscription && subscription.plan_id !== 1)
-  const subscriptionEndDate = getSubscriptionEndDate()
+    (subscription && 'plan_id' in subscription && subscription.plan_id !== 1);
+  const subscriptionEndDate = getSubscriptionEndDate();
+
+  // Upload profile image
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !user) return;
+    
+    const file = e.target.files[0];
+    
+    try {
+      setUploading(true);
+      setError(null);
+      setApiStatus({message: "Uploading profile image...", type: "loading"});
+      
+      // First, upload the image
+      const uploadResponse = await uploadProfileImage(file, token);
+      let successMessage = uploadResponse.message || 'Profile image updated successfully';
+      
+      // Check if we have a successful upload
+      if (uploadResponse.success || uploadResponse.profileImage) {
+        // We need to get the base64 image from validate-token API directly
+        try {
+          // Call validateToken directly to get the latest user data with base64 image
+          console.log("Getting updated user data with base64 image...");
+          
+          // Token null check before calling validateToken
+          if (!token) {
+            throw new Error("No authentication token available");
+          }
+          
+          const validateData = await validateToken(token);
+          
+          if (validateData && validateData.valid && validateData.user) {
+            console.log("Received user data from validate-token:", 
+              validateData.user.imageBase64 ? "Contains base64 image" : "No base64 image");
+            
+            // Prefer base64 image from API response
+            let profileImage = null;
+            
+            // First priority: Use base64 image if available
+            if (validateData.user.imageBase64) {
+              profileImage = validateData.user.imageBase64;
+              console.log("Using base64 image from API");
+            } 
+            // Second priority: Use profile picture URL
+            else if (validateData.user.profilePicture) {
+              profileImage = normalizeImageUrl(validateData.user.profilePicture);
+              console.log("Using profile picture URL from API");
+            }
+            // Last resort: Use the URL from the upload response
+            else if (uploadResponse.profileImage) {
+              profileImage = normalizeImageUrl(uploadResponse.profileImage);
+              console.log("Using upload response URL");
+            }
+            
+            if (profileImage) {
+              // Update context with the image data
+              if (contextUpdateUserData) {
+                contextUpdateUserData({
+                  ...user,
+                  profilePicture: profileImage
+                });
+                
+                // Update DOM directly
+                updateUserData({
+                  profilePicture: profileImage
+                });
+              }
+              
+              // Also update email verification status and any other user data
+              if (validateData.user.isVerified !== undefined) {
+                setEmailVerified(!!validateData.user.isVerified);
+              }
+            }
+          } else {
+            console.warn("No valid user data from validate-token, falling back to upload response URL");
+            
+            // Fallback to upload response URL
+            if (uploadResponse.profileImage) {
+              const normalizedImageUrl = normalizeImageUrl(uploadResponse.profileImage);
+              
+              // Update context with the image URL
+              if (contextUpdateUserData && user) {
+                contextUpdateUserData({
+                  ...user,
+                  profilePicture: normalizedImageUrl
+                });
+                
+                // Update DOM directly
+                updateUserData({
+                  profilePicture: normalizedImageUrl
+                });
+              }
+            }
+          }
+        } catch (validationError) {
+          console.error("Error getting updated user data:", validationError);
+          
+          // Fallback to upload response URL on error
+          if (uploadResponse.profileImage) {
+            const normalizedImageUrl = normalizeImageUrl(uploadResponse.profileImage);
+            
+            // Update context with the image URL as fallback
+            if (contextUpdateUserData && user) {
+              contextUpdateUserData({
+                ...user,
+                profilePicture: normalizedImageUrl
+              });
+              
+              // Update DOM directly
+              updateUserData({
+                profilePicture: normalizedImageUrl
+              });
+            }
+          }
+        }
+        
+        // Success notification
+        setSuccess(successMessage);
+        toast.success(successMessage);
+        setApiStatus({message: successMessage, type: "success"});
+      } else {
+        // Handle unsuccessful upload
+        const errorMsg = uploadResponse.error || 'Failed to upload profile image';
+        setError(errorMsg);
+        toast.error(`Error: ${errorMsg}`);
+        setApiStatus({message: `Error: ${errorMsg}`, type: "error"});
+      }
+    } catch (error: any) {
+      setError(error.message);
+      toast.error(`Error: ${error.message || "Failed to upload profile image"}`);
+      setApiStatus({message: `Error: ${error.message || "Failed to upload profile image"}`, type: "error"});
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="container p-0 mx-auto space-y-4 sm:space-y-6">
+      {/* Sonar Message */}
+      {apiStatus && (
+        <SonarMessage 
+          message={apiStatus.message} 
+          type={apiStatus.type} 
+          onDismiss={() => setApiStatus(null)} 
+        />
+      )}
+      
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 md:space-y-6">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-5 md:gap-6">
-            <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-100 flex items-center justify-center">
+            <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-100 flex items-center justify-center user-profile-circle">
               {user?.profilePicture ? (
                 <Image 
-                  src={user.profilePicture} 
+                  src={user.profilePicture.startsWith('data:') ? user.profilePicture : 
+                       user.profilePicture.startsWith('//') ? 
+                       `https:${user.profilePicture}` : 
+                       user.profilePicture.startsWith('/') ? user.profilePicture : `/${user.profilePicture}`} 
                   alt="Profile" 
                   fill 
                   className="object-cover" 
@@ -332,15 +1207,52 @@ export default function ProfilePage() {
               ) : (
                 <UserCircle className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-emerald-300" />
               )}
+              
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden"
+                accept="image/jpeg,image/png,image/gif"
+                onChange={handleProfileImageUpload}
+              />
+              
+              <div 
+                className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 flex items-center justify-center transition-all cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="opacity-0 hover:opacity-100 transition-opacity">
+                  <Upload className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              
+              {uploading && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                  <div className="h-4 w-4 border-2 border-t-emerald-500 rounded-full animate-spin"></div>
+                </div>
+              )}
             </div>
             
             <div className="flex-1 text-center md:text-left">
               <div className="flex flex-col md:flex-row items-center md:items-start gap-2">
                 <div>
-                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold">
+                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold" key={`user-name-${user?.name}`}>
                     {user?.name || (user?.email ? user.email.split('@')[0] : 'User')}
                   </h1>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">{user?.email || 'No email available'}</p>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1" key={`user-email-${user?.email}`}>
+                    {user?.email || 'No email available'}
+                  </p>
+                  
+                  <div className="mt-2">
+                    <Badge className={`py-0.5 sm:py-1 px-2 sm:px-3 rounded-full text-2xs sm:text-xs ${
+                      planDetails.type === 'Premium' 
+                        ? 'bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 hover:from-amber-200 hover:to-amber-300 border-0'
+                        : planDetails.type === 'Basic'
+                        ? 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-700 hover:from-emerald-200 hover:to-emerald-300 border-0'
+                        : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300 border-0'
+                    }`}>
+                      {planDetails.name}
+                    </Badge>
+                  </div>
                 </div>
                 
                 <div className="flex items-center gap-2 mt-2 sm:mt-3 md:mt-0 md:ml-auto">
@@ -354,34 +1266,50 @@ export default function ProfilePage() {
                     Edit Profile
                   </Button>
                   
-                  <Badge className={`py-0.5 sm:py-1 px-2 sm:px-3 rounded-full text-2xs sm:text-xs ${
-                    planDetails.type === 'Premium' 
-                      ? 'bg-gradient-to-r from-amber-100 to-amber-200 text-amber-700 hover:from-amber-200 hover:to-amber-300 border-0'
-                      : planDetails.type === 'Basic'
-                      ? 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-700 hover:from-emerald-200 hover:to-emerald-300 border-0'
-                      : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300 border-0'
-                  }`}>
-                    {planDetails.name}
-                  </Badge>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-2xs sm:text-xs h-7 sm:h-8 rounded-md border-gray-200 hover:bg-gray-50"
+                    onClick={handleRefreshClick}
+                  >
+                    <RefreshCw className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                    Refresh
+                  </Button>
+                  
+                  <TokenDebugButton token={token} />
+                  
+                  <Link href="/dashboard/token-renew">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="text-2xs sm:text-xs h-7 sm:h-8 rounded-md border-gray-200 hover:bg-gray-50"
+                    >
+                      <Shield className="mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                      Manage Session
+                    </Button>
+                  </Link>
                 </div>
               </div>
               
-              {emailVerified ? (
-                <div className="flex items-center justify-center md:justify-start mt-1 sm:mt-2 text-emerald-600 text-2xs sm:text-xs">
-                  <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
-                  Email verified
-                </div>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 sm:mt-3 md:mt-2 text-2xs sm:text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 h-6 sm:h-7 rounded-md"
-                  onClick={handleVerifyEmail}
-                >
-                  <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
-                  Verify Email
-                </Button>
-              )}
+              <div className="flex items-center justify-center md:justify-start mt-1 sm:mt-2 text-2xs sm:text-xs">
+                {emailVerified ? (
+                  <div className="flex items-center text-emerald-600">
+                    <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
+                    Email verified
+                  </div>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 h-6 sm:h-7 rounded-md"
+                    onClick={handleVerifyEmail}
+                    disabled={resendingVerification}
+                  >
+                    <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
+                    {resendingVerification ? 'Sending...' : 'Verify Email'}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
           
@@ -394,26 +1322,73 @@ export default function ProfilePage() {
                   </label>
                   <Input 
                     id="name" 
-                    defaultValue={user?.name || ''} 
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
                     placeholder="Enter your name"
                     className="h-8 sm:h-9 text-xs sm:text-sm"
                   />
                 </div>
+                
+                <div>
+                  <label htmlFor="email" className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">
+                    Email Address
+                  </label>
+                  <Input 
+                    id="email" 
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Enter your email"
+                    className="h-8 sm:h-9 text-xs sm:text-sm"
+                  />
+                  <p className="text-2xs mt-1 text-gray-500">
+                    Note: Changing your email will require re-verification.
+                  </p>
+                </div>
+                
+                {error && (
+                  <div className="px-3 py-2 rounded-md bg-red-50 text-red-600 text-2xs sm:text-xs">
+                    {error}
+                  </div>
+                )}
+                
+                {success && (
+                  <div className="px-3 py-2 rounded-md bg-emerald-50 text-emerald-600 text-2xs sm:text-xs">
+                    {success}
+                  </div>
+                )}
                 
                 <div className="flex justify-end gap-2">
                   <Button 
                     variant="outline" 
                     size="sm" 
                     className="h-7 sm:h-8 text-2xs sm:text-xs"
-                    onClick={() => setIsEditing(null)}
+                    onClick={() => {
+                      setIsEditing(null)
+                      setError(null)
+                      setSuccess(null)
+                      // Reset form data to user data
+                      if (user) {
+                        setFormData(prev => ({
+                          ...prev,
+                          name: user.name || '',
+                          email: user.email || ''
+                        }))
+                      }
+                    }}
+                    disabled={loading}
                   >
                     Cancel
                   </Button>
                   <Button 
                     size="sm" 
                     className="h-7 sm:h-8 text-2xs sm:text-xs bg-emerald-600 hover:bg-emerald-700"
+                    onClick={updateProfile}
+                    disabled={loading}
                   >
-                    Save Changes
+                    {loading ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </div>
               </div>
@@ -453,6 +1428,50 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      
+      {/* Email Verification UI */}
+      {!emailVerified && (
+        <div className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden">
+          <div className="p-3 sm:p-4 md:p-6">
+            <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+              <div className="bg-amber-50 p-2 rounded-full">
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm sm:text-base font-medium text-amber-700 mb-1">Verify Your Email Address</h3>
+                <p className="text-2xs sm:text-xs text-amber-600 mb-3">
+                  Please check your inbox for a verification email and click the verification link.
+                </p>
+                
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 sm:h-8 text-2xs sm:text-xs border-amber-200 text-amber-700 hover:bg-amber-50"
+                  onClick={handleVerifyEmail}
+                  disabled={resendingVerification}
+                >
+                  {resendingVerification ? 'Sending...' : 'Resend Verification Email'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Confetti effect for email verification */}
+      {showConfetti && (
+        <div className="fixed inset-0 pointer-events-none z-50">
+          {/* This would typically be a confetti component */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-emerald-100 text-emerald-700 px-4 py-3 rounded-lg shadow-lg">
+              <div className="flex items-center">
+                <Check className="mr-2 h-5 w-5" />
+                <span className="font-medium">Email verified successfully!</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Subscription Section */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -572,7 +1591,13 @@ export default function ProfilePage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 rounded-lg bg-gray-50">
               <div className="mb-2 sm:mb-0">
                 <h3 className="text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">Password</h3>
-                <p className="text-2xs sm:text-xs text-gray-500">Last changed: Never</p>
+                <p className="text-2xs sm:text-xs text-gray-500">
+                  {lastPasswordChange ? (
+                    <>Last changed: <span className="text-gray-700">{formatDate(lastPasswordChange)}</span></>
+                  ) : (
+                    'Last changed: Never'
+                  )}
+                </p>
               </div>
               <Button 
                 variant="outline" 
@@ -584,7 +1609,163 @@ export default function ProfilePage() {
               </Button>
             </div>
             
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 rounded-lg bg-gray-50">
+            {isEditing === 'password' && (
+              <div className="p-3 sm:p-4 rounded-lg bg-gray-50">
+                <div className="flex flex-col space-y-2 sm:space-y-3">
+                  <div>
+                    <label htmlFor="currentPassword" className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">
+                      Current Password
+                    </label>
+                    <Input 
+                      id="currentPassword" 
+                      name="currentPassword"
+                      type="password"
+                      value={formData.currentPassword}
+                      onChange={handleInputChange}
+                      placeholder="Enter your current password"
+                      className="h-8 sm:h-9 text-xs sm:text-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="newPassword" className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">
+                      New Password
+                    </label>
+                    <Input 
+                      id="newPassword" 
+                      name="newPassword"
+                      type="password"
+                      value={formData.newPassword}
+                      onChange={handleInputChange}
+                      placeholder="Enter your new password"
+                      className="h-8 sm:h-9 text-xs sm:text-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="confirmPassword" className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">
+                      Confirm New Password
+                    </label>
+                    <Input 
+                      id="confirmPassword" 
+                      name="confirmPassword"
+                      type="password"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      placeholder="Confirm your new password"
+                      className="h-8 sm:h-9 text-xs sm:text-sm"
+                    />
+                  </div>
+                  
+                  {error && (
+                    <div className="px-3 py-2 rounded-md bg-red-50 text-red-600 text-2xs sm:text-xs">
+                      {error}
+                    </div>
+                  )}
+                  
+                  {success && (
+                    <div className="px-3 py-2 rounded-md bg-emerald-50 text-emerald-600 text-2xs sm:text-xs">
+                      {success}
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between">
+                    <Button 
+                      variant="link" 
+                      size="sm" 
+                      className="px-0 h-6 text-2xs sm:text-xs text-amber-600 hover:text-amber-700"
+                      onClick={() => {
+                        router.push('/forgot-password');
+                      }}
+                      disabled={loading}
+                    >
+                      Forgot password?
+                    </Button>
+                    
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-7 sm:h-8 text-2xs sm:text-xs"
+                        onClick={() => {
+                          setIsEditing(null)
+                          setError(null)
+                          setSuccess(null)
+                          // Reset password fields
+                          setFormData(prev => ({
+                            ...prev,
+                            currentPassword: '',
+                            newPassword: '',
+                            confirmPassword: ''
+                          }))
+                        }}
+                        disabled={loading}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        className="h-7 sm:h-8 text-2xs sm:text-xs bg-emerald-600 hover:bg-emerald-700"
+                        onClick={changePassword}
+                        disabled={loading || !formData.currentPassword || !formData.newPassword || !formData.confirmPassword}
+                      >
+                        {loading ? 'Updating...' : 'Update Password'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Password Reset Dialog - This would be a modal or overlay in a real app */}
+            {showPasswordReset && (
+              <div className="p-3 sm:p-4 rounded-lg bg-amber-50 border border-amber-100">
+                <div className="flex flex-col space-y-2 sm:space-y-3">
+                  <h3 className="text-xs sm:text-sm font-medium text-amber-700">Reset Password</h3>
+                  <p className="text-2xs sm:text-xs text-amber-600">
+                    We'll send a password reset link to your email address: {user?.email || 'your email'}
+                  </p>
+                  
+                  {error && (
+                    <div className="px-3 py-2 rounded-md bg-red-50 text-red-600 text-2xs sm:text-xs">
+                      {error}
+                    </div>
+                  )}
+                  
+                  {success && (
+                    <div className="px-3 py-2 rounded-md bg-emerald-50 text-emerald-600 text-2xs sm:text-xs">
+                      {success}
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 sm:h-8 text-2xs sm:text-xs border-amber-200 text-amber-700 hover:bg-amber-100"
+                      onClick={() => {
+                        setShowPasswordReset(false)
+                        setError(null)
+                        setSuccess(null)
+                      }}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="h-7 sm:h-8 text-2xs sm:text-xs bg-amber-600 hover:bg-amber-700"
+                      onClick={requestPasswordReset}
+                      disabled={loading}
+                    >
+                      {loading ? 'Sending...' : 'Send Reset Link'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 rounded-lg bg-gray-50">
               <div className="mb-2 sm:mb-0">
                 <h3 className="text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">Two-Factor Authentication</h3>
                 <p className="text-2xs sm:text-xs text-gray-500">Add an extra layer of security to your account</p>
@@ -597,10 +1778,35 @@ export default function ProfilePage() {
                 <Lock className="mr-1 sm:mr-1.5 h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 Set Up 2FA
               </Button>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
+      
+      {!emailVerified && (
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={() => {
+            // Force email verification state update
+            setEmailVerified(true);
+            if (contextUpdateUserData && user) {
+              contextUpdateUserData({
+                ...user,
+                isVerifiedEmail: true
+              });
+              setApiStatus({
+                message: "Email verification status updated manually. This is a UI fix only.", 
+                type: "info"
+              });
+              setTimeout(() => setApiStatus(null), 3000);
+            }
+          }}
+          className="text-xs h-8 text-amber-600 border-amber-300"
+        >
+          Force Verify UI
+        </Button>
+      )}
     </div>
   )
 }

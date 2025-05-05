@@ -109,10 +109,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       
       const response = await fetch(url.toString(), {
         method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        },
+        // Remove cache-control headers that can cause CORS issues
         cache: 'no-store'
       });
 
@@ -196,10 +193,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       
       const response = await fetch(url.toString(), {
         method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        },
+        // Remove cache headers that can trigger CORS preflight issues
         cache: 'no-store'
       });
 

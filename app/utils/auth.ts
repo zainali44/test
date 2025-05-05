@@ -30,17 +30,69 @@ export interface Subscription {
 }
 
 export interface User {
+  [x: string]: any
   id: string
   email: string
   name?: string
   subscriptions?: Subscription[]
 }
 
+// Function to get cookie by name
+export function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') {
+    return null; // Return null if running server-side
+  }
+  
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(';').shift() || null;
+  }
+  return null;
+}
+
 // Client-side functions to store and retrieve user data
 
 export function storeUserData(userData: User): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('user-data', JSON.stringify(userData))
+    try {
+      // Create a safe copy of user data without large image data
+      const safeUserData = { ...userData };
+      
+      // Remove large image data fields to avoid exceeding localStorage quota
+      if (safeUserData.profilePicture && (
+          safeUserData.profilePicture.startsWith('data:image') || 
+          safeUserData.profilePicture.length > 1000
+      )) {
+        // Store a flag that image exists but don't store the actual data
+        safeUserData.profilePicture = '[IMAGE_DATA_EXISTS]';
+      }
+      
+      // Remove other potential large data fields
+      if (safeUserData.imageBase64) {
+        delete safeUserData.imageBase64;
+      }
+      
+      // Store the safe version of user data
+      localStorage.setItem('user-data', JSON.stringify(safeUserData));
+    } catch (error) {
+      console.error('Error storing user data in localStorage:', error);
+      
+      // If storage fails, try with even less data
+      try {
+        // Minimal user data with only essential fields
+        const minimalUserData = {
+          id: userData.id,
+          name: userData.name,
+          email: userData.email,
+          isVerifiedEmail: userData.isVerifiedEmail
+        };
+        
+        localStorage.setItem('user-data', JSON.stringify(minimalUserData));
+      } catch (fallbackError) {
+        console.error('Failed to store even minimal user data:', fallbackError);
+      }
+    }
   }
 }
 
@@ -72,10 +124,22 @@ export function storeAuthToken(token: string): void {
 }
 
 export function getAuthToken(): string | null {
+  // Try to get token from localStorage first
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('auth-token')
+    const localToken = localStorage.getItem('auth-token');
+    if (localToken) {
+      return localToken;
+    }
+    
+    // If not in localStorage, try to get from cookie
+    const cookieToken = getCookie('auth-token') || getCookie('ls-auth-token');
+    if (cookieToken) {
+      // Save to localStorage for future use
+      localStorage.setItem('auth-token', cookieToken);
+      return cookieToken;
+    }
   }
-  return null
+  return null;
 }
 
 export function clearAuthToken(): void {

@@ -53,9 +53,9 @@ function PaymentContent() {
     MERCHANT_NAME: 'Payfast Merchant',
     TOKEN: '',
     ORDER_DATE: getCurrentDate(),
-    SUCCESS_URL: typeof window !== 'undefined' ? `http://192.168.3.48:3000/payment/success` : 'http://192.168.3.48:3000/payment/success',
-    FAILURE_URL: typeof window !== 'undefined' ? `http://192.168.3.48:3000/payment/failure` : 'http://192.168.3.48:3000/payment/failure',
-    CHECKOUT_URL: typeof window !== 'undefined' ? `http://192.168.3.48:3000/payment/checkout` : 'http://192.168.3.48:3000/payment/checkout',
+    SUCCESS_URL: typeof window !== 'undefined' ? `http://202.69.61.19:3000/payment/success` : 'http://202.69.61.19:3000/payment/success',
+    FAILURE_URL: typeof window !== 'undefined' ? `http://202.69.61.19:3000/payment/failure` : 'http://202.69.61.19:3000/payment/failure',
+    CHECKOUT_URL: typeof window !== 'undefined' ? `http://202.69.61.19:3000/payment/checkout` : 'http://202.69.61.19:3000/payment/checkout',
     CUSTOMER_EMAIL_ADDRESS: '',
     CUSTOMER_MOBILE_NO: '',
     SIGNATURE: 'SOMERANDOM-STRING',
@@ -231,8 +231,8 @@ function PaymentContent() {
     }
 
     // Build success and failure URLs with plan parameters
-    let successUrl = 'http://192.168.3.48:3000/payment/success';
-    let failureUrl = 'http://192.168.3.48:3000/payment/failure';
+    let successUrl = 'http://202.69.61.19:3000/payment/success';
+    let failureUrl = 'http://202.69.61.19:3000/payment/failure';
     
     // Add plan parameters to the URLs if they exist
     if (planParam && durationParam) {

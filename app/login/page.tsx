@@ -10,7 +10,7 @@ import { Eye, EyeOff, Mail, Lock, PowerCircle, PowerCircleIcon } from "lucide-re
 import Link from "next/link"
 import { useAuth } from "@/app/contexts/auth-context"
 import { useRouter, useSearchParams } from "next/navigation"
-import { getAuthToken } from "@/app/utils/auth"
+import { getAuthToken, verifyToken } from "@/app/utils/auth"
 
 // Interface for token validation response
 interface TokenValidationResponse {
@@ -33,81 +33,39 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
   const redirectPath = searchParams?.get('redirect')
 
-  // Function to validate token with the external API
-  const validateToken = async (token: string): Promise<boolean> => {
-    try {
-      // Add timeout to prevent long-hanging requests
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-      
-      const response = await fetch('http://localhost:8000/users/validate-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'accept': 'application/json'
-        },
-        body: JSON.stringify({ token }),
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        console.error('Token validation failed with status:', response.status);
-        return false;
-      }
-      
-      const data = await response.json() as TokenValidationResponse;
-      return data.valid || false;
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        console.error('Token validation request timed out');
-      } else {
-        console.error('Token validation error:', error);
-      }
-      return false;
-    }
-  }
-
-  // Check token validity on component mount
+  // Check if already logged in, only once on mount
   useEffect(() => {
-    const checkTokenValidity = async () => {
+    if (mounted) return; // Only run once
+    
+    const checkLoginStatus = async () => {
       setMounted(true)
       
-      // Only perform validation if we're not already logging in
-      if (!loading) {
-        const token = getAuthToken()
-        
-        if (token) {
-          // Validate token with external API
-          const isValid = await validateToken(token)
-          
-          if (!isValid) {
-            // Token is invalid or expired, log the user out
-            console.log('Token invalid or expired, logging out')
-            await logout()
-            return
+      // Simple check if already logged in
+      if (user) {
+        handlePostLoginRedirect();
+        return;
+      }
+      
+      // Check token using local validation first
+      const token = getAuthToken();
+      if (token) {
+        try {
+          // Use local validation to avoid API calls
+          const decoded = verifyToken(token);
+          if (decoded) {
+            // If token is valid locally, just redirect
+            handlePostLoginRedirect();
+            return;
           }
-        }
-        
-        // If user is already logged in and token is valid, handle redirection
-        if (user) {
-          handlePostLoginRedirect()
+        } catch (err) {
+          // Token invalid, let the login page render
+          console.log("Token validation failed:", err);
         }
       }
     }
     
-    // Initial check
-    checkTokenValidity()
-    
-    // Set up periodic token validation (every 5 minutes)
-    const intervalId = setInterval(checkTokenValidity, 5 * 60 * 1000)
-    
-    // Clean up interval on component unmount
-    return () => {
-      clearInterval(intervalId)
-    }
-  }, [user, router, loading, logout])
+    checkLoginStatus();
+  }, [user, router, mounted]);
   
   // Function to handle redirects after login
   const handlePostLoginRedirect = () => {

@@ -51,6 +51,18 @@ export function getCookie(name: string): string | null {
   return null;
 }
 
+// Function to set cookie with proper attributes
+export function setCookie(name: string, value: string, days: number = 30): void {
+  if (typeof document === 'undefined') {
+    return; // Return if running server-side
+  }
+  
+  const date = new Date();
+  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+  const expires = `expires=${date.toUTCString()}`;
+  document.cookie = `${name}=${value}; ${expires}; path=/; SameSite=Lax`;
+}
+
 // Client-side functions to store and retrieve user data
 
 export function storeUserData(userData: User): void {
@@ -119,32 +131,59 @@ export function clearUserData(): void {
 
 export function storeAuthToken(token: string): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('auth-token', token)
+    // Store in localStorage
+    localStorage.setItem('auth-token', token);
+    
+    // Also set as a cookie for middleware access
+    setCookie('auth-token', token);
+    
+    // Set a secondary cookie as backup
+    setCookie('ls-auth-token', token);
   }
 }
 
 export function getAuthToken(): string | null {
-  // Try to get token from localStorage first
-  if (typeof window !== 'undefined') {
-    const localToken = localStorage.getItem('auth-token');
-    if (localToken) {
-      return localToken;
-    }
-    
-    // If not in localStorage, try to get from cookie
-    const cookieToken = getCookie('auth-token') || getCookie('ls-auth-token');
-    if (cookieToken) {
-      // Save to localStorage for future use
-      localStorage.setItem('auth-token', cookieToken);
-      return cookieToken;
-    }
+  if (typeof window === 'undefined') {
+    return null;
   }
+
+  // First check cookie
+  const cookieToken = getCookie('auth-token');
+  if (cookieToken) {
+    // Make sure localStorage is also in sync
+    localStorage.setItem('auth-token', cookieToken);
+    return cookieToken;
+  }
+  
+  // Check for backup cookie
+  const backupCookieToken = getCookie('ls-auth-token');
+  if (backupCookieToken) {
+    // Restore primary cookie and localStorage
+    localStorage.setItem('auth-token', backupCookieToken);
+    setCookie('auth-token', backupCookieToken);
+    return backupCookieToken;
+  }
+  
+  // Finally check localStorage
+  const localToken = localStorage.getItem('auth-token');
+  if (localToken) {
+    // Restore cookies from localStorage
+    setCookie('auth-token', localToken);
+    setCookie('ls-auth-token', localToken);
+    return localToken;
+  }
+  
   return null;
 }
 
 export function clearAuthToken(): void {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('auth-token')
+    // Clear from localStorage
+    localStorage.removeItem('auth-token');
+    
+    // Clear cookies
+    document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'ls-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   }
 }
 

@@ -11,8 +11,13 @@ import {
   storeAuthToken,
   getAuthToken,
   clearAuthToken,
-  verifyToken
+  verifyToken,
+  setCookie
 } from "@/app/utils/auth"
+
+// Prevent excessive token validation
+let lastValidationTime = 0;
+const VALIDATION_COOLDOWN = 30000; // 30 seconds between validations
 
 interface AuthContextType {
   user: User | null
@@ -37,16 +42,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [isInitialized, setIsInitialized] = useState<boolean>(false)
   const router = useRouter()
 
-  // Check if user is already logged in on mount
+  // Check if user is already logged in on mount - with protection against excessive calls
   useEffect(() => {
+    if (isInitialized) return; // Prevent multiple initializations
+    
     const initAuth = async () => {
-      await checkAuth()
-      setLoading(false)
+      try {
+        await checkAuth();
+      } catch (err) {
+        console.error("Error during auth initialization:", err);
+      } finally {
+        setLoading(false);
+        setIsInitialized(true);
+      }
     }
-    initAuth()
-  }, [])
+    
+    initAuth();
+  }, []);
 
   const login = async (email: string, password: string, redirectUrl?: string) => {
     try {
@@ -70,13 +85,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Save token
       const authToken = data.data.token
-      setToken(authToken)
       
-      // Store token in localStorage
-      storeAuthToken(authToken)
+      if (!authToken) {
+        throw new Error("No authentication token received");
+      }
+      
+      // Store token in both localStorage and cookies for consistent access
+      storeAuthToken(authToken);
+      setToken(authToken);
       
       // Log authentication status
-      console.log("Login successful, token stored:", authToken ? "Yes" : "No")
+      console.log("Login successful, token stored")
 
       // If user data is included in the login response, use it directly
       if (data.data.user) {
@@ -89,31 +108,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Show success toast
         toast.success("Logged in successfully")
         
-        // Force cookie check - this helps ensure cookies are properly set before redirect
-        // This can help with production environments where cookie handling may be different
-        document.cookie = `auth-token-check=true; path=/; max-age=3600;`;
-        
-        // Wait briefly to ensure cookies are set
+        // Wait to ensure all state is updated
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        // Redirect to appropriate page (dashboard by default)
-        if (redirectUrl) {
-          router.push(redirectUrl)
-          // Fallback redirect in case Next.js router fails
-          setTimeout(() => {
-            if (window.location.pathname !== redirectUrl) {
-              window.location.href = redirectUrl;
-            }
-          }, 1000);
-        } else {
-          router.push("/dashboard")
-          // Fallback redirect in case Next.js router fails
-          setTimeout(() => {
-            if (window.location.pathname !== "/dashboard") {
-              window.location.href = "/dashboard";
-            }
-          }, 1000);
-        }
+        // Safe redirect logic
+        handleRedirect(redirectUrl || "/dashboard");
         return;
       }
 
@@ -127,30 +126,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Show success toast
         toast.success("Logged in successfully")
         
-        // Redirect to appropriate page (dashboard by default)
-        if (redirectUrl) {
-          router.push(redirectUrl)
-          // Fallback redirect in case Next.js router fails
-          setTimeout(() => {
-            if (window.location.pathname !== redirectUrl) {
-              window.location.href = redirectUrl;
-            }
-          }, 1000);
-        } else {
-          router.push("/dashboard")
-          // Fallback redirect in case Next.js router fails
-          setTimeout(() => {
-            if (window.location.pathname !== "/dashboard") {
-              window.location.href = "/dashboard";
-            }
-          }, 1000);
-        }
+        // Safe redirect
+        handleRedirect(redirectUrl || "/dashboard");
       }
     } catch (err: any) {
       setError(err.message || "Failed to login")
       toast.error(err.message || "Failed to login")
+      // Clear partial state on error
+      clearAuthToken();
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Helper function to handle redirects safely
+  const handleRedirect = (path: string) => {
+    // Set a guard against navigation loops
+    const guardKey = `navigation_${Date.now()}`;
+    sessionStorage.setItem(guardKey, "true");
+    
+    try {
+      router.push(path);
+      
+      // Fallback - only if router fails after a timeout
+      setTimeout(() => {
+        if (window.location.pathname !== path && sessionStorage.getItem(guardKey) === "true") {
+          window.location.href = path;
+        }
+        // Clean up the guard
+        sessionStorage.removeItem(guardKey);
+      }, 2000);
+    } catch (err) {
+      console.error("Navigation error:", err);
+      // Last resort - direct navigation
+      window.location.href = path;
+      // Clean up the guard
+      sessionStorage.removeItem(guardKey);
     }
   }
 
@@ -158,8 +169,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setLoading(true)
       
-      // Set a temporary cookie to indicate logout in progress
-      document.cookie = "logging-out=true; path=/; max-age=5";
+      // Set a temporary cookie to indicate logout in progress - longer timeout
+      setCookie("logging-out", "true", 1/24/60); // 1 minute
       
       // Call logout API
       await fetch("/api/auth/logout", {
@@ -175,20 +186,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
       clearAuthToken()
       clearUserData()
       
-      // Clear cookies manually as a backup
-      document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      
       // Show success toast
       toast.success("Logged out successfully")
       
-      // Wait briefly to ensure cookies are fully cleared
+      // Wait briefly to ensure state is cleared before redirect
       await new Promise(resolve => setTimeout(resolve, 500))
       
-      // Redirect to login page with force reload to clear any cached state
+      // Direct navigation to avoid Next.js router caching issues
       window.location.href = "/login";
     } catch (err: any) {
       setError(err.message || "Failed to logout")
       toast.error(err.message || "Failed to logout")
+      
+      // On error, still try to clean up client-side state
+      setUser(null)
+      setToken(null)
+      clearAuthToken()
+      clearUserData()
+      
+      // Force redirect even on error
+      window.location.href = "/login";
     } finally {
       setLoading(false)
     }
@@ -196,262 +213,112 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const checkAuth = async (): Promise<boolean> => {
     try {
-      // Apply debouncing to checkAuth as well to reduce validation frequency
-      const now = Date.now()
-      if (checkAuth.lastChecked && now - checkAuth.lastChecked < 30000) { // 30 seconds
-        // console.log("Auth checked recently, using cached result:", checkAuth.lastResult)
-        return checkAuth.lastResult
-      }
-      
       // First check if we have user data in storage
       const storedUser = getUserData()
       const storedToken = getAuthToken()
       
-      if (storedUser && storedToken) {
-        // If we already have the user data, use it
-        setUser(storedUser)
-        setToken(storedToken)
+      if (!storedToken) {
+        // No token, definitely not authenticated
+        setUser(null);
+        setToken(null);
+        return false;
+      }
+      
+      // Set token in state
+      setToken(storedToken);
+      
+      if (storedUser) {
+        // If we have user data stored, use it
+        setUser(storedUser);
         
-        // Try local token validation first to avoid unnecessary API calls
+        // Check if token is valid quickly using client-side validation
         try {
-          const decoded = verifyToken(storedToken)
+          const decoded = verifyToken(storedToken);
           if (decoded) {
-            checkAuth.lastChecked = now
-            checkAuth.lastResult = true
-            return true
+            // Token is valid, avoid unnecessary API calls
+            return true;
           }
         } catch (localError) {
           // If local validation fails, continue to API validation
+          console.log("Local token validation failed, trying API validation");
         }
-        
-        // Only validate with external API if local validation fails
-        const isValid = await validateCurrentToken()
-        checkAuth.lastChecked = now
-        checkAuth.lastResult = isValid
+      }
+      
+      // Validate token with API if needed
+      if (shouldValidateToken()) {
+        const isValid = await validateCurrentToken();
         
         if (!isValid) {
-          // If token is invalid, clear user data but don't log out immediately
-          // This prevents immediate redirects and gives UI time to handle the state
-          setTimeout(() => {
-            if (!validateCurrentToken.lastResult) {
-              clearAuthToken()
-              clearUserData()
-              setUser(null)
-              setToken(null)
-            }
-          }, 1000)
-          return false
+          // If token is invalid, clear all auth data
+          clearAuthToken();
+          clearUserData();
+          setUser(null);
+          setToken(null);
+          return false;
         }
         
-        return true
-      } else if (storedToken) {
-        // If we have a token but no user data, validate the token
-        
-        // Check if we already have a user with this token to prevent unnecessary API calls
-        if (user && token === storedToken) {
-          // Try local validation first
-          try {
-            const decoded = verifyToken(storedToken)
-            if (decoded) {
-              checkAuth.lastChecked = now
-              checkAuth.lastResult = true
-              return true
-            }
-          } catch (localError) {
-            // If local validation fails, continue to API validation
-          }
-          
-          // Only validate with external API if local validation fails
-          const isValid = await validateCurrentToken()
-          checkAuth.lastChecked = now
-          checkAuth.lastResult = isValid
-          
-          if (!isValid) {
-            // If token is invalid, clear user data but don't log out immediately
-            setTimeout(() => {
-              if (!validateCurrentToken.lastResult) {
-                clearAuthToken()
-                clearUserData()
-                setUser(null)
-                setToken(null)
-              }
-            }, 1000)
-            return false
-          }
-          
-          return true
-        }
-
-        // Validate the token
-        const validationResponse = await validateToken(storedToken)
-        
-        if (validationResponse.data?.valid && validationResponse.data?.user) {
-          const userData = validationResponse.data.user;
-          setToken(storedToken)
-          setUser(userData)
-          storeUserData(userData)
-          checkAuth.lastChecked = now
-          checkAuth.lastResult = true
-          return true
-        } else {
-          // Clear invalid token but don't log out immediately
-          setTimeout(() => {
-            clearAuthToken()
-            clearUserData()
-          }, 1000)
-          checkAuth.lastChecked = now
-          checkAuth.lastResult = false
-          return false
-        }
+        return true;
       }
       
-      checkAuth.lastChecked = now
-      checkAuth.lastResult = false
-      return false
-    } catch (err) {
-      console.error("Auth check failed:", err)
-      return false
-    }
-  }
-  
-  // Add static properties to the function for debouncing
-  checkAuth.lastChecked = 0
-  checkAuth.lastResult = false
-
-  const validateCurrentToken = async (): Promise<boolean> => {
-    try {
-      const currentToken = token || getAuthToken()
-      
-      if (!currentToken) {
-        return false
-      }
-      
-      // Add more aggressive debouncing to prevent multiple API calls in short succession
-      // This uses a static lastValidated variable in the function's closure
-      const now = Date.now()
-      if (validateCurrentToken.lastValidated && 
-          now - validateCurrentToken.lastValidated < 60000) { // Increase to 60 seconds
-        // console.log("Token validated recently, using cached result:", validateCurrentToken.lastResult)
-        return validateCurrentToken.lastResult
-      }
-      
-      // Add local token validation before making an API call
-      try {
-        const decoded = verifyToken(currentToken)
-        if (decoded) {
-          // If the token is valid locally, we can avoid the API call
-          validateCurrentToken.lastValidated = now
-          validateCurrentToken.lastResult = true
-          return true
-        }
-      } catch (localError) {
-        // If local validation fails, continue to API validation
-        console.error("Local token validation failed:", localError)
-      }
-      
-      // console.log("Validating token with external API")
-      // Validate with external API
-      try {
-        // Get the full URL for API requests
-        let baseUrl = '';
-        
-        // Check if we're running on the client side
-        if (typeof window !== 'undefined') {
-          // Use current window location for client-side requests
-          baseUrl = window.location.origin;
-        } else {
-          // For server-side, use environment variable or default
-          baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        }
-        
-        // Use absolute URL to avoid parsing errors
-        const validationUrl = `${baseUrl}/api/auth/validate-token`;
-        console.log("Calling token validation endpoint:", validationUrl);
-        
-        const response = await fetch(validationUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ token: currentToken }),
-          // Add timeout to prevent hanging requests
-          signal: AbortSignal.timeout(5000)
-        })
-        
-        if (!response.ok) {
-          validateCurrentToken.lastValidated = now
-          validateCurrentToken.lastResult = false
-          return false
-        }
-
-        const data = await response.json()
-        
-        // Check if the response contains a valid field
-        if (typeof data.valid === 'undefined') {
-          console.error("Invalid API response format:", data)
-          validateCurrentToken.lastValidated = now
-          validateCurrentToken.lastResult = false
-          return false
-        }
-        
-        const result = !!data.valid
-        // console.log("External token validation result:", result)
-        
-        // Cache the result
-        validateCurrentToken.lastValidated = now
-        validateCurrentToken.lastResult = result
-        
-        // If valid and user data is included, update user context
-        if (result && data.user && updateUserData) {
-          updateUserData(data.user)
-        }
-        
-        return result
-      } catch (fetchError) {
-        console.error("External API call failed:", fetchError)
-        
-        // If the API call fails, fall back to local token validation
-        // This prevents logout loops when the API is unavailable
-        try {
-          const decoded = verifyToken(currentToken)
-          if (decoded) {
-            // If the token is still valid locally, consider it valid
-            validateCurrentToken.lastValidated = now
-            validateCurrentToken.lastResult = true
-            return true
-          }
-        } catch (fallbackError) {
-          // If local validation fails again, token is invalid
-          console.error("Fallback validation failed:", fallbackError)
-        }
-        
-        validateCurrentToken.lastValidated = now
-        validateCurrentToken.lastResult = false
-        return false
-      }
+      // If we avoided validation, assume token is valid based on local data
+      return !!storedUser && !!storedToken;
     } catch (error) {
-      console.error("Token validation failed:", error)
-      return false
+      console.error("Error checking authentication:", error);
+      return false;
     }
   }
   
-  // Add static properties to the function
-  validateCurrentToken.lastValidated = 0
-  validateCurrentToken.lastResult = false
+  // Helper function to determine if we should validate the token
+  const shouldValidateToken = (): boolean => {
+    const now = Date.now();
+    
+    // If it's been less than the cooldown period since last validation, skip
+    if (now - lastValidationTime < VALIDATION_COOLDOWN) {
+      return false;
+    }
+    
+    // Update last validation time
+    lastValidationTime = now;
+    return true;
+  }
 
+  // Validate current token with the API
+  const validateCurrentToken = async (): Promise<boolean> => {
+    const token = getAuthToken();
+    if (!token) return false;
+    
+    try {
+      const response = await validateToken(token);
+      
+      if (response.data.valid && response.data.user) {
+        // Update user data if we got it from the API
+        setUser(response.data.user);
+        storeUserData(response.data.user);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("Error validating token:", error);
+      return false;
+    }
+  }
+
+  // Helper function to validate a token
   const validateToken = async (token: string) => {
-    const response = await fetch("/api/auth/validate-token", {
+    const response = await fetch("/api/auth/validate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify({ token }),
     })
-
-    const data = await response.json()
-    return data
+    
+    return await response.json()
   }
 
+  // Update user data
   const updateUserData = (data: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...data }

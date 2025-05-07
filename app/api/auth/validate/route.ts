@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Race the validation promise against the timeout
-    return Promise.race([validationPromise(), responseTimeout]);
+    return Promise.race([validationPromise(), responseTimeout]) as Promise<NextResponse>;
   } catch (error) {
     // Catch-all error handler
     return NextResponse.json({

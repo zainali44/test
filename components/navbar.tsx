@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import router from "next/router"
 
 // Simplified nav items as requested
 const navItems = [
@@ -231,6 +232,7 @@ export default function Navbar() {
                     <Button
                       size="sm"
                       className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-lg shadow-red-600/20 border-0 transition-all duration-300 text-xs rounded-full px-8 py-4 flex items-center gap-2"
+                      onClick={() => router.push('/payment')}
                     >
                       Get CREST VPN
                     </Button>

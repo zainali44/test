@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AlertTriangle } from "lucide-react"
+import { MapPin } from "lucide-react"
 
 
 export default function IpStatusBanner() {
   const [ipData, setIpData] = useState({
     ip: "",
     isp: "",
-    status: "",
+    location: "",
   })
 
 //   In a real implementation, you would fetch the actual IP data
@@ -22,7 +22,7 @@ export default function IpStatusBanner() {
         setIpData({
           ip: data.ip,
           isp: ispData.org || "Unknown ISP",
-          status: "Unprotected"
+          location: `${ispData.city}, ${ispData.country_name}` || "Unknown Location"
         });
       } catch (error) {
         console.error('Error fetching IP data:', error);
@@ -53,10 +53,10 @@ export default function IpStatusBanner() {
         </div>
 
         <div className="flex items-center">
-          <span className="font-medium mr-1">Your Status:</span>
-          <span className="text-red-500 flex items-center">
-            {ipData.status}
-            <AlertTriangle className="h-3 w-3 ml-1" />
+          <span className="font-medium mr-1">Your Location:</span>
+          <span className="text-blue-400 flex items-center">
+            {ipData.location}
+            <MapPin className="h-3 w-3 ml-1" />
           </span>
         </div>
       </div>

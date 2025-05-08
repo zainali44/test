@@ -40,7 +40,7 @@ export default function Home() {
       <GlobalAccessSection />
       
       {/* Testimonials section */}
-      <TestimonialsSection />
+      {/* <TestimonialsSection /> */}
 
       {/* <PricingPage /> */}
 
@@ -57,7 +57,7 @@ export default function Home() {
       {/* <SecurityBeyondSection /> */}
 
       {/* VPN Stats section */}
-      <VpnStatsSection />
+      {/* <VpnStatsSection /> */}
 
       {/* Footer */}
       <Footer />

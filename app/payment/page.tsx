@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, CheckCircle, ArrowRight, CreditCard, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/app/contexts/auth-context';
+import { PhoneInput } from 'react-international-phone';
+import 'react-international-phone/style.css';
 
 // Create a component to handle search params
 function PaymentContent() {
@@ -29,6 +31,7 @@ function PaymentContent() {
 
   const [mobileNumber, setMobileNumber] = useState('');
   const [mobileError, setMobileError] = useState('');
+  const [formattedMobileNumber, setFormattedMobileNumber] = useState('');
   const [pageLoading, setPageLoading] = useState(true);
 
   // Use a ref to store the basketId to ensure it stays consistent throughout the component lifecycle
@@ -305,9 +308,8 @@ function PaymentContent() {
   }, []);
 
   const validateMobileNumber = (number: string) => {
-    // Basic mobile number validation for Pakistan
-    const phoneRegex = /^(03\d{9})$/;
-    return phoneRegex.test(number);
+    // Check if the number has a minimum length (with country code)
+    return number && number.length >= 8;
   };
 
   // Submit form handler
@@ -319,7 +321,7 @@ function PaymentContent() {
     }
     
     if (!validateMobileNumber(mobileNumber)) {
-      setMobileError('Please enter a valid Pakistani mobile number (format: 03XXXXXXXXX)');
+      setMobileError('Please enter a valid mobile number');
       return;
     }
     
@@ -349,11 +351,11 @@ function PaymentContent() {
       form.action = 'https://ipg1.apps.net.pk/Ecommerce/api/Transaction/PostTransaction';
       form.style.display = 'none';
       
-      // Use the current formData with the token and mobile number
+      // Use the formatted number with country code
       const submissionData = {
         ...formData,
         TOKEN: token,
-        CUSTOMER_MOBILE_NO: mobileNumber
+        CUSTOMER_MOBILE_NO: mobileNumber.replace(/\s+/g, '') // Remove spaces for submission
       };
       
       // Add all form fields
@@ -464,7 +466,7 @@ function PaymentContent() {
           </div>
         )}
         
-        <Card className="overflow-hidden border border-gray-200 shadow-md">
+        <Card className="overflow-hidden border-none shadow-none">
           <CardHeader className="bg-gray-50 border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-gray-800">Secure Checkout</CardTitle>
@@ -515,17 +517,53 @@ function PaymentContent() {
                 Mobile Number
               </Label>
               <div className="mt-1">
-                <Input
-                  id="mobileNumber"
-                  name="mobileNumber"
-                  type="tel"
-                  placeholder="03XXXXXXXXX"
+                <PhoneInput
+                  defaultCountry="pk"
                   value={mobileNumber}
-                  onChange={(e) => {
-                    setMobileNumber(e.target.value);
+                  onChange={(phone) => {
+                    setMobileNumber(phone);
                     if (mobileError) setMobileError('');
                   }}
-                  className={`block w-full rounded-md ${mobileError ? 'border-red-300' : 'border-gray-300'}`}
+                  inputStyle={{
+                    width: '100%',
+                    height: '40px',
+                    fontSize: '16px',
+                    borderRadius: '0.375rem',
+                    borderColor: mobileError ? '#f87171' : '#d1d5db',
+                    paddingLeft: '10px',
+                  }}
+                  countrySelectorStyleProps={{
+                    buttonStyle: {
+                      borderColor: mobileError ? '#f87171' : '#d1d5db',
+                      borderRadius: '0.375rem 0 0 0.375rem',
+                      borderRight: 'none',
+                      padding: '0 12px',
+                      height: '40px',
+                      backgroundColor: '#f9fafb',
+                      marginRight: '8px',
+                    },
+                    dropdownStyleProps: {
+                      style: {
+                        zIndex: 999,
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        maxHeight: '300px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.375rem',
+                        marginTop: '4px',
+                        width: 'auto',
+                        minWidth: '250px',
+                      }
+                    }
+                  }}
+                  className="custom-phone-input"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                  }}
                 />
               </div>
               {mobileError && (
@@ -535,7 +573,7 @@ function PaymentContent() {
                 </div>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                Your mobile number is required for payment verification
+                Please include your country code for payment verification
               </p>
             </div>
             
@@ -647,8 +685,92 @@ function PaymentContent() {
 // Main component with Suspense boundary
 export default function PaymentPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading payment information...</div>}>
-      <PaymentContent />
-    </Suspense>
+    <>
+      <style jsx global>{`
+        .custom-phone-input {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          border-radius: 0.375rem;
+          overflow: visible;
+          border: 1px solid #d1d5db;
+          position: relative;
+        }
+        .custom-phone-input .react-international-phone-input-container {
+          flex: 1;
+          width: 100%;
+        }
+        .custom-phone-input .react-international-phone-input {
+          border-top-left-radius: 0;
+          border-bottom-left-radius: 0;
+          height: 40px;
+          margin-left: 8px;
+          width: 100%;
+          border: none;
+          box-shadow: none;
+          outline: none;
+        }
+        .custom-phone-input .react-international-phone-country-selector-button {
+          display: flex;
+          align-items: center;
+          padding-right: 12px !important;
+          border: none;
+          background-color: #f9fafb;
+          border-right: 1px solid #e5e7eb;
+        }
+        .custom-phone-input .react-international-phone-country-selector-button-flag {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 10px;
+        }
+        .custom-phone-input .react-international-phone-country-selector-button:focus,
+        .custom-phone-input .react-international-phone-input:focus {
+          outline: none;
+          box-shadow: none;
+        }
+        .custom-phone-input:focus-within {
+          border-color: #2563eb;
+          ring: 2px solid rgba(37, 99, 235, 0.2);
+        }
+        
+        /* Dropdown styles */
+        .react-international-phone-country-selector-dropdown {
+          position: absolute;
+          z-index: 1000;
+          top: 100%;
+          left: 0;
+          background: white;
+          margin-top: 4px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          border-radius: 0.375rem;
+          max-height: 300px;
+          overflow-y: auto;
+          width: auto;
+          min-width: 250px;
+        }
+        
+        .react-international-phone-country-selector-dropdown-item {
+          padding: 8px 12px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+        }
+        
+        .react-international-phone-country-selector-dropdown-item:hover {
+          background-color: #f3f4f6;
+        }
+        
+        .react-international-phone-country-selector-dropdown-item-flag {
+          margin-right: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      `}</style>
+      <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading payment information...</div>}>
+        <PaymentContent />
+      </Suspense>
+    </>
   );
 } 

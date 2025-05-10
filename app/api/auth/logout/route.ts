@@ -19,6 +19,22 @@ function removeAuthCookie(): void {
     path: "/",
     httpOnly: true
   })
+  
+  // Also delete the logging-out cookie
+  cookies().delete({
+    name: "logging-out",
+    path: "/",
+    httpOnly: true
+  })
+  
+  // Set a cookie to indicate recent logout
+  cookies().set({
+    name: "recently-logged-out",
+    value: "true",
+    path: "/",
+    maxAge: 60, // 1 minute (changed from 5 minutes to reduce interference)
+    httpOnly: true
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -41,6 +57,33 @@ export async function POST(request: NextRequest) {
       path: "/",
       httpOnly: true
     })
+    
+    response.cookies.delete({
+      name: "ls-auth-token",
+      path: "/",
+      httpOnly: true
+    })
+    
+    response.cookies.delete({
+      name: "logging-out",
+      path: "/",
+      httpOnly: true
+    })
+    
+    // Set recently-logged-out cookie in response
+    response.cookies.set({
+      name: "recently-logged-out",
+      value: "true",
+      path: "/",
+      maxAge: 60, // 1 minute
+      httpOnly: true
+    })
+    
+    // Set explicit cookies with past expiration as a fallback approach
+    response.headers.append('Set-Cookie', 'auth-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly');
+    response.headers.append('Set-Cookie', 'ls-auth-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly');
+    response.headers.append('Set-Cookie', 'logging-out=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly');
+    response.headers.append('Set-Cookie', 'recently-logged-out=true; Path=/; Max-Age=60; HttpOnly');
     
     return response
   } catch (error) {

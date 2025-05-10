@@ -5,10 +5,14 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "react-hot-toast"
 import { requestPasswordReset } from "../utils/profileApi"
+import { z } from "zod"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Mail, ArrowLeft, AlertCircle, Check } from "lucide-react"
+import { Loading } from "@/components/ui/loading"
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
@@ -97,7 +101,14 @@ export default function ForgotPasswordPage() {
               className="w-full bg-emerald-600 hover:bg-emerald-700"
               disabled={loading}
             >
-              {loading ? "Sending..." : "Send Reset Link"}
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <Loading size={20} color="#FFFFFF" text="" inline className="mr-2" />
+                  <span>Sending...</span>
+                </div>
+              ) : (
+                "Send Reset Link"
+              )}
             </Button>
           </form>
         )}

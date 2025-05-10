@@ -6,9 +6,11 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Loading } from "@/components/ui/loading"
 import { Eye, EyeOff, Mail, Lock, User, Check } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import ReactDOM from "react-dom";
 
 export default function SignupPage() {
   const [name, setName] = useState("")
@@ -17,6 +19,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const [passwordStrength, setPasswordStrength] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
@@ -24,8 +27,39 @@ export default function SignupPage() {
   const router = useRouter()
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    // Quick-check if already logged in (client-side only)
+    const checkTokenAndRedirect = () => {
+      if (typeof window !== 'undefined') {
+        // Check localStorage and cookies
+        const token = localStorage.getItem('auth-token') || 
+                     document.cookie.includes('auth-token=') || 
+                     document.cookie.includes('ls-auth-token=');
+                     
+        if (token) {
+          console.log("Auth token detected, redirecting to dashboard");
+          // Use direct navigation for speed
+          window.location.href = "/dashboard/downloads";
+          return true;
+        }
+      }
+      return false;
+    };
+    
+    // Run immediate check before any other logic
+    const alreadyRedirected = checkTokenAndRedirect();
+    if (alreadyRedirected) {
+      return;
+    }
+    
+    // If not redirected immediately, allow the signup form to show
+    setCheckingAuth(false);
+  }, []);
+
+  useEffect(() => {
+    if (!checkingAuth) {
+      setMounted(true)
+    }
+  }, [checkingAuth])
 
   useEffect(() => {
     // Simple password strength checker
@@ -205,8 +239,9 @@ export default function SignupPage() {
     return "bg-green-500"
   }
 
-  if (!mounted) {
-    return null
+  if (!mounted || checkingAuth) {
+    // Show a simple loading state instead of nothing while checking auth
+    return <Loading fullScreen text="Checking authentication status..." />
   }
 
   return (
@@ -481,26 +516,7 @@ export default function SignupPage() {
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 sm:h-5 sm:w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  <Loading size={20} color="#FFFFFF" text="" inline className="mr-2" />
                   <span>Create Account</span>
                 </div>
               ) : (

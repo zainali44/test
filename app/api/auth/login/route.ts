@@ -12,6 +12,19 @@ interface JWTPayload {
 
 // Server-side function to set auth cookie
 function setAuthCookie(token: string): void {
+  // Clear any logout-related cookies first
+  cookies().delete({
+    name: "recently-logged-out",
+    path: "/",
+    httpOnly: true
+  })
+  
+  cookies().delete({
+    name: "logging-out",
+    path: "/",
+    httpOnly: true
+  })
+  
   // Primary HTTP-only cookie for security
   cookies().set({
     name: "auth-token",
@@ -36,6 +49,42 @@ function setAuthCookie(token: string): void {
   })
 }
 
+// Set cookies to indicate login failure
+function setLoginFailedCookies(): void {
+  // Set login-failed cookie
+  cookies().set({
+    name: "login-failed",
+    value: "true",
+    httpOnly: false,
+    secure: false,
+    maxAge: 300, // 5 minutes
+    path: "/",
+    sameSite: "lax"
+  })
+  
+  // Set bypass auth during error cookie
+  cookies().set({
+    name: "_bypass_auth_during_error",
+    value: "true",
+    httpOnly: false,
+    secure: false,
+    maxAge: 300, // 5 minutes
+    path: "/",
+    sameSite: "lax"
+  })
+  
+  // Explicitly set auth-validated to false
+  cookies().set({
+    name: "auth-validated",
+    value: "false",
+    httpOnly: false,
+    secure: false,
+    maxAge: 300, // 5 minutes
+    path: "/",
+    sameSite: "lax"
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -43,6 +92,7 @@ export async function POST(request: NextRequest) {
 
     // Validate request body
     if (!email || !password) {
+      setLoginFailedCookies();
       return NextResponse.json(
         { 
           status: "error", 
@@ -69,6 +119,7 @@ export async function POST(request: NextRequest) {
 
     // Handle different response statuses
     if (response.status === 404) {
+      setLoginFailedCookies();
       return NextResponse.json(
         { 
           status: "error", 
@@ -79,6 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (response.status === 401) {
+      setLoginFailedCookies();
       return NextResponse.json(
         { 
           status: "error", 
@@ -89,6 +141,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!response.ok) {
+      setLoginFailedCookies();
       return NextResponse.json(
         {
           status: "error",
@@ -106,6 +159,7 @@ export async function POST(request: NextRequest) {
     const token = data.token;
 
     if (!token) {
+      setLoginFailedCookies();
       return NextResponse.json(
         { 
           status: "error", 
@@ -180,6 +234,7 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     console.error("Login error:", error)
+    setLoginFailedCookies();
     return NextResponse.json(
       { 
         status: "error", 

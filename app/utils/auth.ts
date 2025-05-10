@@ -180,10 +180,37 @@ export function clearAuthToken(): void {
   if (typeof window !== 'undefined') {
     // Clear from localStorage
     localStorage.removeItem('auth-token');
+    localStorage.removeItem('ls-auth-token');
     
-    // Clear cookies
+    // Get recently-logged-out cookie value before clearing cookies
+    // so we can preserve it through the clearing process
+    let recentlyLoggedOut = getCookie('recently-logged-out');
+    
+    // Clear all auth-related cookies with all possible configuration combinations
+    // Approach 1: Standard way
     document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     document.cookie = 'ls-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'logging-out=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    
+    // Approach 2: With domain attribute
+    const domain = window.location.hostname;
+    document.cookie = `auth-token=; path=/; domain=${domain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    document.cookie = `ls-auth-token=; path=/; domain=${domain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    document.cookie = `logging-out=; path=/; domain=${domain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    
+    // Approach 3: For root domain (if we're on a subdomain)
+    const rootDomain = domain.split('.').slice(-2).join('.');
+    if (rootDomain !== domain) {
+      document.cookie = `auth-token=; path=/; domain=${rootDomain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      document.cookie = `ls-auth-token=; path=/; domain=${rootDomain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      document.cookie = `logging-out=; path=/; domain=${rootDomain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    }
+    
+    // If we had the recently-logged-out cookie, restore it
+    if (recentlyLoggedOut === 'true') {
+      const fiveMinutes = 1/24/12; // 5 minutes in days
+      setCookie('recently-logged-out', 'true', fiveMinutes);
+    }
   }
 }
 

@@ -18,15 +18,15 @@ export default function Footer() {
         { name: "Help Center", href: "#" },
         { name: "Server Status", href: "#" },
         { name: "Speed Test", href: "#" },
-        { name: "Contact Us", href: "#" },
+        { name: "Contact Us", href: "/contact" },
       ],
     },
     {
       title: "Company",
       links: [
-        { name: "About Us", href: "#" },
-        { name: "Privacy Policy", href: "#" },
-        { name: "Terms of Service", href: "#" },
+        { name: "About Us", href: "/about" },
+        { name: "Privacy Policy", href: "/privacy" },
+        { name: "Terms of Service", href: "/terms" },
       ],
     },
   ]
@@ -63,16 +63,16 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+        <div className="flex flex-col md:flex-row md:justify-between mt-12 pt-8 border-t border-gray-800">
           <p className="text-gray-400 text-sm mb-4 md:mb-0">&copy; {currentYear} crestVPN. All rights reserved.</p>
           <div className="flex gap-6">
-            <Link href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+            <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors text-sm">
               Privacy Policy
             </Link>
-            <Link href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+            <Link href="/terms" className="text-gray-400 hover:text-white transition-colors text-sm">
               Terms of Service
             </Link>
-            <Link href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+            <Link href="/cookies" className="text-gray-400 hover:text-white transition-colors text-sm">
               Cookie Policy
             </Link>
           </div>

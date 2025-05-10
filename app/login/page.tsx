@@ -2,15 +2,24 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Loading } from "@/components/ui/loading"
 import { Eye, EyeOff, Mail, Lock, PowerCircle, PowerCircleIcon } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/app/contexts/auth-context"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getAuthToken, verifyToken } from "@/app/utils/auth"
+import { toast } from "react-hot-toast"
+
+// Add TypeScript declaration for window._skipAuthChecks
+declare global {
+  interface Window {
+    _skipAuthChecks?: boolean;
+  }
+}
 
 // Interface for token validation response
 interface TokenValidationResponse {
@@ -28,47 +37,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { login, logout, loading, user } = useAuth()
+  const [checkingAuth, setCheckingAuth] = useState(false)
+  const { login, logout, loading, user, error } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams?.get('redirect')
 
-  // Check if already logged in, only once on mount
-  useEffect(() => {
-    if (mounted) return; // Only run once
-    
-    const checkLoginStatus = async () => {
-      setMounted(true)
-      
-      // Simple check if already logged in
-      if (user) {
-        handlePostLoginRedirect();
-        return;
-      }
-      
-      // Check token using local validation first
-      const token = getAuthToken();
-      if (token) {
-        try {
-          // Use local validation to avoid API calls
-          const decoded = verifyToken(token);
-          if (decoded) {
-            // If token is valid locally, just redirect
-            handlePostLoginRedirect();
-            return;
-          }
-        } catch (err) {
-          // Token invalid, let the login page render
-          console.log("Token validation failed:", err);
-        }
-      }
-    }
-    
-    checkLoginStatus();
-  }, [user, router, mounted]);
-  
-  // Function to handle redirects after login
-  const handlePostLoginRedirect = () => {
+  // Function to handle redirects after login - moved up to prevent usage before declaration
+  const handlePostLoginRedirect = useCallback(() => {
     if (redirectPath === 'checkout') {
       // Get stored plan details from localStorage
       const storedPlan = localStorage.getItem('selectedPlan')
@@ -93,7 +69,7 @@ export default function LoginPage() {
             queryParams.append('savings', planDetails.savings.toString())
           }
           
-          // Redirect to checkout with the parameters
+          // Redirect to checkout with the parameters using router
           router.push(`/checkout?${queryParams.toString()}`)
           return
         } catch (error) {
@@ -105,46 +81,101 @@ export default function LoginPage() {
     
     // Default redirect to dashboard
     router.push("/dashboard")
-  }
+  }, [redirectPath, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Immediately show the login form, then check auth in background
+  useEffect(() => {
+    // Set a timeout to show the login form immediately
+    const timer = setTimeout(() => {
+      // If still checking auth after 300ms, force show the login form
+      setCheckingAuth(false);
+    }, 300); // Reduced timeout for better UX
     
-    if (redirectPath === 'checkout') {
-      // Get stored plan details
-      const storedPlan = localStorage.getItem('selectedPlan')
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Simplify login form display and auth checking
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Skip auth check completely if any login failure indicators are present
+      const loginFailed = window.sessionStorage.getItem('login_failed') === 'true' ||
+                         document.cookie.includes('login-failed=true') ||
+                         new URLSearchParams(window.location.search).get('login_failed') === 'true';
       
-      if (storedPlan) {
-        try {
-          const planDetails = JSON.parse(storedPlan)
-          
-          // Build the query string for checkout page
-          const queryParams = new URLSearchParams()
-          
-          if (planDetails.plan === 'Teams') {
-            queryParams.append('plan', 'Teams')
-            queryParams.append('teamMembers', planDetails.teamMembers.toString())
-            queryParams.append('price', planDetails.price.toString())
-            queryParams.append('monthlyRate', planDetails.monthlyRate)
-          } else {
-            queryParams.append('plan', planDetails.plan)
-            queryParams.append('duration', planDetails.duration)
-            queryParams.append('price', planDetails.price.toString())
-            queryParams.append('monthlyRate', planDetails.monthlyRate)
-            queryParams.append('savings', planDetails.savings.toString())
-          }
-          
-          // Login with redirect to checkout
-          await login(email, password, `/checkout?${queryParams.toString()}`)
-          return
-        } catch (error) {
-          console.error('Error parsing stored plan details', error)
-        }
+      if (loginFailed) {
+        console.log("Login failed flags detected - skipping auth checks");
+        setCheckingAuth(false);
+        return;
+      }
+      
+      // If we have a valid token and user, redirect to dashboard
+      if (user) {
+        handlePostLoginRedirect();
+        return;
       }
     }
     
-    // Default login behavior
-    await login(email, password)
+    // Default to showing login form
+    setCheckingAuth(false);
+  }, [user, handlePostLoginRedirect]);
+  
+  // If showing the loading indicator, make sure it times out quickly
+  useEffect(() => {
+    if (checkingAuth) {
+      const timer = setTimeout(() => setCheckingAuth(false), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [checkingAuth]);
+
+  // Also handle the login submission to immediately prevent checking auth on error
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Prevent default form behavior aggressively
+    e.stopPropagation();
+    
+    // Early validation to prevent unnecessary API calls
+    if (!email || !password) {
+      // Display error for empty fields
+      toast.error("Please enter both email and password");
+      return;
+    }
+    
+    // Set critical flags BEFORE attempting login to prevent page navigation
+    if (typeof window !== 'undefined') {
+      document.cookie = '_bypass_auth_during_error=true; path=/; max-age=300';
+      document.cookie = 'auth-validated=false; path=/; max-age=300';
+      document.cookie = 'login-in-progress=true; path=/; max-age=60';
+      window._skipAuthChecks = true;
+    }
+    
+    // Now set loading state
+    setCheckingAuth(true);
+    
+    try {
+      // Attempt login with try/catch to capture all errors
+      await login(email, password);
+      // Note: Successful login redirection is now handled in the auth context
+    } catch (err) {
+      console.error("Login form submission error:", err);
+      
+      // Handle error locally - don't rely on auth context
+      toast.error("Login failed. Please check your credentials and try again.");
+      
+      // Set error flags
+      if (typeof window !== 'undefined') {
+        // Set login failure flags
+        window.sessionStorage.setItem('login_failed', 'true');
+        document.cookie = 'login-failed=true; path=/; max-age=300';
+        document.cookie = 'login-in-progress=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        // Force the page to stay on login without reloading
+        if (window.history && window.location.pathname.includes('/login')) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
+    } finally {
+      // Reset loading state
+      setCheckingAuth(false);
+    }
   }
 
   // Animation variants
@@ -199,8 +230,9 @@ export default function LoginPage() {
     { top: "80%", left: "70%", size: "180px", delay: 0.6 },
   ]
 
-  if (!mounted) {
-    return null
+  // Render loading or form based on state
+  if (checkingAuth && typeof document !== 'undefined' && !document.cookie.includes('login-failed=true') && !loading) {
+    return <Loading fullScreen text="Please Wait..." />
   }
 
   return (
@@ -287,6 +319,17 @@ export default function LoginPage() {
           <div className="ml-2 text-xl sm:text-2xl font-bold text-gray-900 self-center">CREST VPN</div>
         </motion.div>
 
+        {/* Display error message if present */}
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-3 bg-red-100 border border-red-300 text-red-600 rounded-lg text-sm"
+          >
+            {error}
+          </motion.div>
+        )}
+
         <motion.form
           variants={containerVariants}
           initial="hidden"
@@ -342,26 +385,7 @@ export default function LoginPage() {
             >
               {loading ? (
                 <div className="flex items-center justify-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 sm:h-5 sm:w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  <Loading size={20} color="#FFFFFF" text="" inline className="mr-2" />
                   <span>Login</span>
                 </div>
               ) : (

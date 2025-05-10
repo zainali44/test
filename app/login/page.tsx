@@ -36,7 +36,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted] = useState(true)
   const [checkingAuth, setCheckingAuth] = useState(false)
   const { login, logout, loading, user, error } = useAuth()
   const router = useRouter()
@@ -77,57 +77,25 @@ export default function LoginPage() {
           // If there's an error, just go to dashboard as fallback
         }
       }
+    } else if (redirectPath === 'upgrade') {
+      // Redirect to the upgrade page in dashboard
+      router.push('/dashboard/upgrade')
+      return
     }
     
     // Default redirect to dashboard
     router.push("/dashboard")
   }, [redirectPath, router]);
 
-  // Immediately show the login form, then check auth in background
+  // Simplify auth checking - do a quick check only without affecting UX
   useEffect(() => {
-    // Set a timeout to show the login form immediately
-    const timer = setTimeout(() => {
-      // If still checking auth after 300ms, force show the login form
-      setCheckingAuth(false);
-    }, 300); // Reduced timeout for better UX
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Simplify login form display and auth checking
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Skip auth check completely if any login failure indicators are present
-      const loginFailed = window.sessionStorage.getItem('login_failed') === 'true' ||
-                         document.cookie.includes('login-failed=true') ||
-                         new URLSearchParams(window.location.search).get('login_failed') === 'true';
-      
-      if (loginFailed) {
-        console.log("Login failed flags detected - skipping auth checks");
-        setCheckingAuth(false);
-        return;
-      }
-      
-      // If we have a valid token and user, redirect to dashboard
-      if (user) {
-        handlePostLoginRedirect();
-        return;
-      }
+    // If user is already logged in, redirect without showing login form
+    if (user) {
+      handlePostLoginRedirect();
     }
-    
-    // Default to showing login form
-    setCheckingAuth(false);
   }, [user, handlePostLoginRedirect]);
-  
-  // If showing the loading indicator, make sure it times out quickly
-  useEffect(() => {
-    if (checkingAuth) {
-      const timer = setTimeout(() => setCheckingAuth(false), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [checkingAuth]);
 
-  // Also handle the login submission to immediately prevent checking auth on error
+  // Handle the login submission with better error handling
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Prevent default form behavior aggressively
@@ -153,7 +121,7 @@ export default function LoginPage() {
     
     try {
       // Attempt login with try/catch to capture all errors
-      await login(email, password);
+      await login(email, password, redirectPath ? `/dashboard?redirect=${redirectPath}` : undefined);
       // Note: Successful login redirection is now handled in the auth context
     } catch (err) {
       console.error("Login form submission error:", err);
@@ -385,7 +353,7 @@ export default function LoginPage() {
             >
               {loading ? (
                 <div className="flex items-center justify-center">
-                  <Loading size={20} color="#FFFFFF" text="" inline className="mr-2" />
+                  <Loading size={16} color="#FFFFFF" text="" inline className="mr-4" />
                   <span>Login</span>
                 </div>
               ) : (

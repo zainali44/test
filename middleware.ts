@@ -19,10 +19,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Get auth state
-  const authToken = request.cookies.get('auth-token')?.value || '';
-  const authValidated = request.cookies.get('auth-validated')?.value === 'true';
-  
   // Define which paths are considered public (no auth required)
   const isPublicPath = path === '/login' || 
                      path === '/signup' || 
@@ -35,23 +31,40 @@ export function middleware(request: NextRequest) {
                      path.startsWith('/api/auth/') ||  // Auth API endpoints
                      path.startsWith('/api/public/');  // Other public APIs
   
+  // Always allow access to public paths without any auth checks
+  if (isPublicPath) {
+    // Get auth state only if we need to check for redirects to dashboard
+    const authToken = request.cookies.get('auth-token')?.value || '';
+    const authValidated = request.cookies.get('auth-validated')?.value === 'true';
+    
+    // For login/signup pages with active auth, redirect to dashboard
+    if ((path === '/login' || path === '/signup') && authToken && authValidated) {
+      console.log("Valid auth detected on login/signup page, redirecting to dashboard");
+      const response = NextResponse.redirect(new URL('/dashboard/downloads', request.url));
+      return response;
+    }
+    
+    // For all other public paths, just continue
+    return NextResponse.next();
+  }
+  
   // Check if path is a protected dashboard route
   const isDashboardRoute = path.startsWith('/dashboard') || 
                           path.startsWith('/account') || 
                           path.startsWith('/settings');
   
-  // For login/signup pages with active auth, redirect to dashboard
-  if ((path === '/login' || path === '/signup') && authToken && authValidated) {
-    console.log("Valid auth detected on login/signup page, redirecting to dashboard");
-    const response = NextResponse.redirect(new URL('/dashboard/downloads', request.url));
-    return response;
-  }
-  
-  // Protect dashboard routes - require both token AND validation
-  if (isDashboardRoute && (!authToken || !authValidated)) {
-    console.log("Missing/invalid auth for protected route, redirecting to login");
-    // Simple redirect without query parameters to avoid complexities
-    return NextResponse.redirect(new URL('/login', request.url));
+  // For protected routes, check auth status
+  if (isDashboardRoute) {
+    // Get auth state
+    const authToken = request.cookies.get('auth-token')?.value || '';
+    const authValidated = request.cookies.get('auth-validated')?.value === 'true';
+    
+    // Protect dashboard routes - require both token AND validation
+    if (!authToken || !authValidated) {
+      console.log("Missing/invalid auth for protected route, redirecting to login");
+      // Simple redirect without query parameters to avoid complexities
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
   
   // For all other cases, let the request proceed

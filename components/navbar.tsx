@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Shield, Menu, X, User, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/app/contexts/auth-context"
 import {
   DropdownMenu,
@@ -16,7 +16,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import router from "next/router"
 
 // Simplified nav items as requested
 const navItems = [
@@ -38,6 +37,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
   const { user, logout } = useAuth()
 
   // Set scrolled to true by default on pages other than home
@@ -232,7 +232,7 @@ export default function Navbar() {
                     <Button
                       size="sm"
                       className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-lg shadow-red-600/20 border-0 transition-all duration-300 text-xs rounded-full px-8 py-4 flex items-center gap-2"
-                      onClick={() => router.push('/payment')}
+                      onClick={() => router.push('/pricing')}
                     >
                       Get CREST VPN
                     </Button>

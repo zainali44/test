@@ -12,81 +12,57 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter()
   const { user, loading, checkAuth } = useAuth()
-  const [isChecking, setIsChecking] = useState(true)
-  const [redirectAttempted, setRedirectAttempted] = useState(false)
+  const [verifyingAuth, setVerifyingAuth] = useState(false)
   const authChecked = useRef(false)
 
   useEffect(() => {
-    // Debug logging
-    console.log("Protected route - Auth state:", { 
-      loading, 
-      isChecking, 
-      user: !!user, 
-      redirectAttempted,
-      path: typeof window !== 'undefined' ? window.location.pathname : 'unknown' 
-    })
+    // If auth is already loading from context, don't check again
+    if (loading) return;
     
-    // Check for potential redirect loop
-    const path = typeof window !== 'undefined' ? window.location.pathname : ''
-    const isLoop = path.includes('/login') && path.includes('callbackUrl=')
-    
-    if (isLoop) {
-      console.log("Detected potential redirect loop in protected route")
-      // Don't redirect again, stay on the current page
-      setIsChecking(false)
-      return
+    // If we already have a user, no need to verify again
+    if (user) {
+      authChecked.current = true;
+      return;
     }
     
-    const verify = async () => {
-      if (authChecked.current) return
-      
-      try {
-        authChecked.current = true
-        
-        // Check the auth state (this internally validates the token)
-        const isAuthenticated = await checkAuth()
-        console.log("Auth checked result:", isAuthenticated)
-        
-        if (!isAuthenticated && !redirectAttempted) {
-          setRedirectAttempted(true)
-          console.log("Not authenticated, redirecting to login")
-          // Use direct navigation as a fallback if Next.js router isn't working
-          if (typeof window !== 'undefined') {
-            window.location.href = `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
-          } else {
-            router.push("/login")
+    // Only check auth if we haven't done so already
+    if (!authChecked.current && !verifyingAuth) {
+      const verify = async () => {
+        try {
+          setVerifyingAuth(true);
+          const isAuthenticated = await checkAuth();
+          
+          if (!isAuthenticated) {
+            // Redirect to login with current path for callback
+            if (typeof window !== 'undefined') {
+              const currentPath = window.location.pathname;
+              window.location.href = `/login?callbackUrl=${encodeURIComponent(currentPath)}`;
+              return;
+            }
+            router.push("/login");
           }
+        } finally {
+          setVerifyingAuth(false);
+          authChecked.current = true;
         }
-      } finally {
-        setIsChecking(false)
-      }
+      };
+      
+      verify();
     }
+  }, [router, checkAuth, loading, user, verifyingAuth]);
 
-    verify()
-  }, [router, checkAuth, loading, isChecking, redirectAttempted])
-
-  // Add a specific check for user data to ensure profile is available
-  useEffect(() => {
-    if (!loading && !isChecking && !user && !redirectAttempted) {
-      setRedirectAttempted(true)
-      console.log("No user after auth check, redirecting to login")
-      if (typeof window !== 'undefined') {
-        window.location.href = `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
-      } else {
-        router.push("/login")
-      }
-    }
-  }, [loading, isChecking, user, router, redirectAttempted])
-
-  if (loading || isChecking) {
+  // Only show loading spinner when explicitly checking auth (not when using cached state)
+  if ((loading || verifyingAuth) && !user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-10 w-10 text-emerald-600 animate-spin" />
+      <div className="flex h-screen w-full items-center justify-center bg-white">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-10 w-10 text-emerald-600 animate-spin" />
+          <p className="mt-4 text-sm text-gray-500">Verifying your session...</p>
+        </div>
       </div>
     )
   }
 
-  // Force render children even if auth is uncertain in production
-  // This prevents redirect loops in problematic environments
+  // Once auth check is complete and we're still here, render children
   return <>{children}</>
 } 

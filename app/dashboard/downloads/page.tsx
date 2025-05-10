@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -73,11 +73,36 @@ function AuthDebugButton({ onDebugComplete }: { onDebugComplete: (result: any) =
 
 export default function DownloadsPage() {
   const { user, token } = useAuth()
-  const { subscription } = useSubscription()
+  const { subscription, loading: subscriptionLoading } = useSubscription()
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
   const [selectedDownload, setSelectedDownload] = useState("")
   const [authDebugResult, setAuthDebugResult] = useState<any>(null)
   const [showAuthDebug, setShowAuthDebug] = useState(false)
+  const [pageReady, setPageReady] = useState(false)
+
+  // Manage page loading once we have essential data
+  useEffect(() => {
+    if (user && !subscriptionLoading) {
+      // Only show page when necessary data is loaded
+      const timer = setTimeout(() => {
+        setPageReady(true);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user, subscriptionLoading]);
+
+  // If data isn't ready, show a minimal inline loader instead of a full screen one
+  if (!pageReady) {
+    return (
+      <div className="flex items-center justify-center h-[70vh]">
+        <div className="flex flex-col items-center">
+          <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-2 text-sm text-gray-500">Preparing downloads...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Check if user has a free plan
   const isFreePlan = () => {

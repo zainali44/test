@@ -209,7 +209,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Use router.push for navigation instead of window.location
         // Add a query parameter to prevent caching issues
         const cacheBuster = Date.now().toString();
-        const targetUrl = redirectUrl || "/dashboard/downloads";
+        const targetUrl = redirectUrl 
+          ? redirectUrl.includes('upgrade') 
+            ? "/dashboard/upgrade" 
+            : redirectUrl 
+          : "/dashboard/downloads";
         router.push(`${targetUrl}?auth=${cacheBuster}`);
         return;
       }
@@ -225,7 +229,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         // Use router.push for navigation
         const cacheBuster = Date.now().toString();
-        const targetUrl = redirectUrl || "/dashboard/downloads";
+        const targetUrl = redirectUrl 
+          ? redirectUrl.includes('upgrade') 
+            ? "/dashboard/upgrade" 
+            : redirectUrl 
+          : "/dashboard/downloads";
         router.push(`${targetUrl}?auth=${cacheBuster}`);
       }
     } catch (err: any) {
@@ -292,6 +300,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Flag to prevent double navigation
       if (typeof window !== 'undefined') {
         window.sessionStorage.setItem('logout_in_progress', 'true');
+        // Set explicit logout flags to prevent middleware redirects
+        document.cookie = 'logging-out=true; path=/; max-age=60'; // 1 minute
+        document.cookie = 'auth-validated=false; path=/; max-age=300'; // 5 minutes
       }
       
       // Set recently-logged-out flag to prevent dashboard flashing
@@ -301,12 +312,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(null)
       setToken(null)
       
-      // Clear stored data client-side first
+      // Clear stored data client-side first - do this thoroughly
+      if (typeof window !== 'undefined') {
+        // Clear all auth tokens and related cookies with multiple approaches
+        document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'ls-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'login-in-progress=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = '_bypass_auth_during_error=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        localStorage.removeItem('auth-token');
+        sessionStorage.removeItem('login_in_progress');
+        sessionStorage.removeItem('auth_validated');
+      }
+      
       clearAuthToken()
       clearUserData()
-      
-      // Set a temporary cookie to indicate logout in progress - longer timeout
-      setCookie("logging-out", "true", 1/24/60); // 1 minute
       
       // Call logout API - don't wait for the response
       fetch("/api/auth/logout", {
@@ -325,13 +344,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Wait briefly to ensure state is cleared before redirect
       await new Promise(resolve => setTimeout(resolve, 300))
       
-      // Use router for navigation
-      router.push('/login')
+      // Use router for navigation with a cache-busting query parameter
+      const cacheBuster = Date.now().toString();
+      router.push(`/login?t=${cacheBuster}`)
       
-      // Clear the logout in progress flag
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.removeItem('logout_in_progress');
-      }
+      // Clear the logout in progress flag after navigation starts
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.removeItem('logout_in_progress');
+          // Keep the logging-out cookie to prevent auth checks during redirect
+        }
+      }, 500); // Short delay to ensure navigation has started
     } catch (err: any) {
       setError(err.message || "Failed to logout")
       toast.error(err.message || "Failed to logout")

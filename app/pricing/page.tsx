@@ -80,13 +80,11 @@ export default function PricingPage() {
     }
     
     if (!user) {
-      // Not logged in - redirect to login page
-      router.push('/login?redirect=checkout')
+      // Not logged in - redirect to login page with 'upgrade' as redirect parameter
+      router.push('/login?redirect=upgrade')
     } else {
-      // User is logged in - proceed with checkout
-      router.push(
-        `/checkout?plan=${planName}&duration=${duration}&price=${totalPrice}&monthlyRate=${monthlyRate}&savings=${savings}`,
-      )
+      // User is logged in - redirect directly to upgrade page instead of checkout
+      router.push('/dashboard/upgrade')
     }
   }
 
@@ -114,13 +112,11 @@ export default function PricingPage() {
     }
     
     if (!user) {
-      // Not logged in - redirect to login page
-      router.push('/login?redirect=checkout')
+      // Not logged in - redirect to login page with 'upgrade' as redirect parameter
+      router.push('/login?redirect=upgrade')
     } else {
-      // Navigate to checkout page with team plan details
-      router.push(
-        `/checkout?plan=Teams&teamMembers=5&price=${totalPrice}&monthlyRate=${monthlyRate}`,
-      )
+      // Navigate to upgrade page instead of checkout
+      router.push('/dashboard/upgrade')
     }
   }
 

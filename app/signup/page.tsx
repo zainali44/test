@@ -19,7 +19,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [checkingAuth, setCheckingAuth] = useState(true)
+  const [checkingAuth, setCheckingAuth] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
@@ -47,19 +47,11 @@ export default function SignupPage() {
     
     // Run immediate check before any other logic
     const alreadyRedirected = checkTokenAndRedirect();
-    if (alreadyRedirected) {
-      return;
+    if (!alreadyRedirected) {
+      // If not redirected, immediately show the form
+      setMounted(true);
     }
-    
-    // If not redirected immediately, allow the signup form to show
-    setCheckingAuth(false);
   }, []);
-
-  useEffect(() => {
-    if (!checkingAuth) {
-      setMounted(true)
-    }
-  }, [checkingAuth])
 
   useEffect(() => {
     // Simple password strength checker
